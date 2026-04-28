@@ -1,0 +1,36 @@
+# Caddyfile — STAT ADM MT
+# Ubicacion: /opt/STAT - ADM MT/Caddyfile
+# Para correr como servicio:
+#   sudo cp Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+
+:80 {
+    root * "/opt/STAT - ADM MT"
+
+    # PHP via FastCGI
+    php_fastcgi unix//run/php/php8.1-fpm.sock
+
+    # CORS para la API
+    @api path /api/*
+    header @api {
+        Access-Control-Allow-Origin  *
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization"
+    }
+
+    # Preflight OPTIONS
+    @options method OPTIONS
+    respond @options 204
+
+    # Archivos estaticos
+    file_server
+
+    # SPA fallback
+    try_files {path} /index.html
+
+    # Logs
+    log {
+        output file /var/log/caddy/stat-adm-mt.log
+        format json
+    }
+}

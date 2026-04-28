@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metroterra — Panel de Administración</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --green:       #1D9E75;
+  --green-light: #E1F5EE;
+  --green-dark:  #0F6E56;
+  --green-text:  #085041;
+  --amber:       #EF9F27;
+  --amber-light: #FAEEDA;
+  --amber-text:  #854F0B;
+  --red:         #E24B4A;
+  --red-light:   #FCEBEB;
+  --red-text:    #A32D2D;
+  --blue:        #378ADD;
+  --blue-light:  #E6F1FB;
+  --blue-text:   #185FA5;
+  --bg:          #F5F4F0;
+  --surface:     #FFFFFF;
+  --border:      rgba(0,0,0,0.09);
+  --border-md:   rgba(0,0,0,0.18);
+  --text:        #1a1a18;
+  --text-muted:  #5F5E5A;
+  --text-hint:   #888780;
+  --radius:      10px;
+  --radius-sm:   6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:        #1a1a18;
+    --surface:   #242422;
+    --border:    rgba(255,255,255,0.09);
+    --border-md: rgba(255,255,255,0.18);
+    --text:      #F1EFE8;
+    --text-muted:#B4B2A9;
+    --text-hint: #888780;
+    --green-light:#04342C; --green-text:#9FE1CB;
+    --amber-light:#412402; --amber-text:#FAC775;
+    --red-light:  #501313; --red-text:#F7C1C1;
+    --blue-light: #042C53; --blue-text:#B5D4F4;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:var(--surface);border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:50;}
+.logo{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.logo svg{width:18px;height:18px;fill:white;}
+.brand-name{font-size:15px;font-weight:600;}
+.brand-sub{font-size:11px;color:var(--text-muted);}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.sync-info{font-size:11px;color:var(--text-hint);}
+.btn-icon{padding:6px 12px;border-radius:var(--radius-sm);border:0.5px solid var(--border-md);background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;}
+.btn-icon:hover{background:var(--bg);}
+.nav{display:flex;padding:0 24px;background:var(--surface);border-bottom:0.5px solid var(--border);overflow-x:auto;gap:2px;}
+.nav-item{padding:10px 14px;font-size:13px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s;user-select:none;}
+.nav-item:hover{color:var(--text);}
+.nav-item.active{color:var(--green);border-bottom-color:var(--green);font-weight:500;}
+.content{padding:24px;max-width:1400px;margin:0 auto;}
+.section{display:none;}
+.section.active{display:block;}
+.sec-title{font-size:20px;font-weight:600;margin-bottom:3px;}
+.sec-sub{font-size:13px;color:var(--text-muted);margin-bottom:20px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:20px;}
+.kpi-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:border-color .15s,transform .1s;}
+.kpi-card:hover{border-color:var(--border-md);transform:translateY(-1px);}
+.kpi-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;line-height:1.4;}
+.kpi-value{font-size:30px;font-weight:600;line-height:1;margin-bottom:6px;}
+.kpi-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:6px;}
+.kpi-fill{height:100%;border-radius:2px;transition:width .7s cubic-bezier(.4,0,.2,1);}
+.kpi-sub{font-size:11px;color:var(--text-hint);}
+.c-green{color:var(--green);} .c-amber{color:var(--amber);} .c-red{color:var(--red);}
+.bg-green{background:var(--green);} .bg-amber{background:var(--amber);} .bg-red{background:var(--red);}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;}
+.card-title{font-size:14px;font-weight:600;}
+.badge{display:inline-flex;align-items:center;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;white-space:nowrap;}
+.bg-badge-green{background:var(--green-light);color:var(--green-text);}
+.bg-badge-amber{background:var(--amber-light);color:var(--amber-text);}
+.bg-badge-red{background:var(--red-light);color:var(--red-text);}
+.bg-badge-blue{background:var(--blue-light);color:var(--blue-text);}
+.bg-badge-gray{background:var(--bg);color:var(--text-muted);border:0.5px solid var(--border);}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{font-size:11px;font-weight:500;color:var(--text-muted);text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--border);white-space:nowrap;background:var(--bg);}
+td{padding:10px;border-bottom:0.5px solid var(--border);color:var(--text);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg);}
+.chk{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:12px;}
+.chk-ok{background:var(--green-light);color:var(--green-text);}
+.chk-no{background:var(--red-light);color:var(--red-text);}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);border:0.5px solid var(--border-md);background:var(--surface);font-size:13px;font-weight:500;color:var(--text);cursor:pointer;transition:background .15s;}
+.btn:hover{background:var(--bg);}
+.btn-primary{background:var(--green);color:white;border-color:var(--green);}
+.btn-primary:hover{background:var(--green-dark);}
+.btn-sm{padding:4px 10px;font-size:12px;}
+.alert{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:var(--radius-sm);margin-bottom:16px;font-size:13px;line-height:1.5;}
+.alert-info{background:var(--blue-light);color:var(--blue-text);}
+.alert-warn{background:var(--amber-light);color:var(--amber-text);}
+.alert-ok{background:var(--green-light);color:var(--green-text);}
+.alert code{font-family:monospace;font-size:12px;background:rgba(0,0,0,0.08);padding:1px 5px;border-radius:3px;}
+.upload-zone{border:1.5px dashed var(--border-md);border-radius:var(--radius);padding:32px;text-align:center;cursor:pointer;color:var(--text-muted);transition:background .15s;}
+.upload-zone:hover{background:var(--bg);}
+.upload-zone input{display:none;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;}
+.modal{background:var(--surface);border-radius:var(--radius);border:0.5px solid var(--border);padding:24px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:18px;}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:16px;border-top:0.5px solid var(--border);}
+.form-group{margin-bottom:14px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+label{display:block;font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:5px;}
+input[type=text],input[type=date],input[type=password],textarea,select{width:100%;padding:8px 10px;border:0.5px solid var(--border-md);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:13px;font-family:inherit;outline:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(29,158,117,.12);}
+textarea{resize:vertical;min-height:72px;}
+.field-note{font-size:11px;color:var(--text-hint);margin-top:4px;}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-row td{text-align:center;padding:32px;color:var(--text-muted);}
+/* connection status dot */
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;}
+.dot-green{background:var(--green);}
+.dot-amber{background:var(--amber);}
+.dot-red{background:var(--red);}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo">
+      <svg viewBox="0 0 18 18"><path d="M9 1L1.5 5.25v7.5L9 17l7.5-4.25v-7.5L9 1zm0 2.5L14.5 6.5l-5.5 3.1L3.5 6.5 9 3.5zM2.5 8.1l6 3.4V15L2.5 11.6V8.1zm7.5 3.4l6-3.4v3.5L10 15v-3.5z"/></svg>
+    </div>
+    <div>
+      <div class="brand-name">Metroterra</div>
+      <div class="brand-sub">Panel de Administración</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="sync-info" id="syncInfo">—</span>
+    <button class="btn-icon" onclick="openConfig()">⚙ Configuración</button>
+  </div>
+</header>
+
+<nav class="nav">
+  <div class="nav-item active"  data-sec="dashboard">Dashboard</div>
+  <div class="nav-item" data-sec="legajo">Legajo Cliente MT</div>
+  <div class="nav-item" data-sec="tramites">Trámites Administrativos</div>
+  <div class="nav-item" data-sec="rescisiones">Rescisiones</div>
+  <div class="nav-item" data-sec="pagos">Pagos Conciliados</div>
+  <div class="nav-item" data-sec="reclamos">Reclamos Administrativos</div>
+</nav>
+
+<main class="content">
+
+  <!-- DASHBOARD -->
+  <div class="section active" id="sec-dashboard">
+    <div class="sec-title">Dashboard general</div>
+    <div class="sec-sub" id="dashDate"></div>
+    <div class="kpi-grid" id="dashKpis"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Visión radar</span></div>
+        <div style="position:relative;height:260px;"><canvas id="dashRadar" role="img" aria-label="Radar de los 5 indicadores de administración">Radar de indicadores.</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Comparación de indicadores</span></div>
+        <div style="position:relative;height:260px;"><canvas id="dashBar" role="img" aria-label="Barras de los 5 indicadores">Barras de indicadores.</canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGAJO -->
+  <div class="section" id="sec-legajo">
+    <div class="sec-title">Legajo Cliente MT</div>
+    <div class="sec-sub">Trazabilidad documental — fuente: Dolibarr CRM (fidinmo.com.ar)</div>
+    <div id="legajoAlert"></div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Legajos completos</div><div class="kpi-value c-green" id="l-pct">—</div><div class="kpi-bar"><div class="kpi-fill bg-green" id="l-bar" style="width:0"></div></div><div class="kpi-sub" id="l-sub">Cargando...</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total clientes</div><div class="kpi-value" id="l-total">—</div><div class="kpi-sub">en Dolibarr</div></div>
+      <div class="kpi-card"><div class="kpi-label">Incompletos</div><div class="kpi-value c-red" id="l-inc">—</div><div class="kpi-sub">requieren acción</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Detalle por cliente</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="legajoSearch" placeholder="Buscar cliente..." style="width:200px" oninput="renderLegajo()">
+          <select id="legajoFilter" onchange="renderLegajo()" style="width:140px">
+            <option value="all">Todos</option>
+            <option value="completo">Completos</option>
+            <option value="incompleto">Incompletos</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadLegajo()">↻ Actualizar</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Cliente</th>
+            <th>Clasificación trazabilidad</th>
+            <th>Documentación complementaria</th>
+            <th>Pagos / trazabilidad financiera</th>
+            <th>Reserva / boleto / fechas</th>
+            <th>Identificación contrato</th>
+            <th>Estado legajo</th>
+          </tr></thead>
+          <tbody id="legajoBody"><tr class="empty-row"><td colspan="7"><span class="spinner"></span> Conectando a Dolibarr...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRAMITES -->
+  <div class="section" id="sec-tramites">
+    <div class="sec-title">Trámites Administrativos</div>
+    <div class="sec-sub">Comisión Amigos Metroterra — fuente: PECAS</div>
+    <div id="tramitesAlert"></div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Finalizados correctamente</div><div class="kpi-value c-green" id="t-pct">—</div><div class="kpi-bar"><div class="kpi-fill bg-green" id="t-bar" style="width:0"></div></div><div class="kpi-sub" id="t-sub">Cargando...</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total registrados</div><div class="kpi-value" id="t-total">—</div><div class="kpi-sub">en PECAS</div></div>
+      <div class="kpi-card"><div class="kpi-label">En proceso</div><div class="kpi-value c-amber" id="t-proc">—</div><div class="kpi-sub">pendientes o en ejecución</div></div>
+      <div class="kpi-card"><div class="kpi-label">Abortados</div><div class="kpi-value c-red" id="t-abort">—</div><div class="kpi-sub">requieren revisión</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Detalle de trámites</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="tramSearch" placeholder="Buscar..." style="width:180px" oninput="renderTramites()">
+          <select id="tramFilter" onchange="renderTramites()" style="width:170px">
+            <option value="all">Todos los estados</option>
+            <option value="Tarea Finalizada">Finalizado</option>
+            <option value="Tarea en Ejecucion">En ejecución</option>
+            <option value="Tareas Pendientes">Pendiente</option>
+            <option value="Mesa de Entrada">Mesa de entrada</option>
+            <option value="Tarea Abortada">Abortado</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadTramites()">↻ Actualizar</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Instancia</th><th>Tarea</th><th>Referido</th><th>Asesor</th><th>Reserva</th><th>Pago ref.</th><th>Fecha</th><th>Inicio tarea</th><th>Fin tarea</th><th>Estado</th></tr></thead>
+          <tbody id="tramitesBody"><tr class="empty-row"><td colspan="10"><span class="spinner"></span> Conectando a PECAS...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESCISIONES -->
+  <div class="section" id="sec-rescisiones">
+    <div class="sec-title">Rescisiones</div>
+    <div class="sec-sub">Cambio de condición Metroterra — fuente: PECAS</div>
+    <div id="rescisionesAlert"></div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Finalizadas (INV)</div><div class="kpi-value c-green" id="r-pct">—</div><div class="kpi-bar"><div class="kpi-fill bg-green" id="r-bar" style="width:0"></div></div><div class="kpi-sub" id="r-sub">Cargando...</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total rescisiones</div><div class="kpi-value" id="r-total">—</div><div class="kpi-sub">registradas</div></div>
+      <div class="kpi-card"><div class="kpi-label">Pendientes / en curso</div><div class="kpi-value c-amber" id="r-pend">—</div><div class="kpi-sub">sin cerrar</div></div>
+      <div class="kpi-card"><div class="kpi-label">Aprobadas por CFO</div><div class="kpi-value c-green" id="r-cfo">—</div><div class="kpi-sub">con aval CFO</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Detalle de rescisiones</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="rescSearch" placeholder="Buscar cliente..." style="width:200px" oninput="renderRescisiones()">
+          <select id="rescFilter" onchange="renderRescisiones()" style="width:170px">
+            <option value="all">Todos los estados</option>
+            <option value="Tarea Finalizada">Finalizado</option>
+            <option value="Tarea en Ejecucion">En ejecución</option>
+            <option value="Tareas Pendientes">Pendiente</option>
+            <option value="Tarea Abortada">Abortado</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadRescisiones()">↻ Actualizar</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Instancia</th><th>Cliente</th><th>Reserva</th><th>Motivo</th><th>Aprob. Gerencia</th><th>Aprob. CFO</th><th>Inicio tarea</th><th>Fin tarea</th><th>Estado</th></tr></thead>
+          <tbody id="rescisionesBody"><tr class="empty-row"><td colspan="9"><span class="spinner"></span> Conectando a PECAS...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGOS -->
+  <div class="section" id="sec-pagos">
+    <div class="sec-title">Pagos Cargados y Conciliados</div>
+    <div class="sec-sub">Subí el archivo "Archivo Conciliación MT" — columna <strong>conciliacion</strong> debe existir (valores: Sí / No)</div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Pagos conciliados</div><div class="kpi-value c-green" id="p-pct">—</div><div class="kpi-bar"><div class="kpi-fill" id="p-bar" style="width:0"></div></div><div class="kpi-sub" id="p-sub">Subí el archivo para calcular</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total registros</div><div class="kpi-value" id="p-total">—</div><div class="kpi-sub">en el archivo</div></div>
+      <div class="kpi-card"><div class="kpi-label">Sin conciliar</div><div class="kpi-value c-red" id="p-falta">—</div><div class="kpi-sub">pendientes de acción</div></div>
+    </div>
+    <div class="card">
+      <label class="upload-zone" for="xlsUpload">
+        <input type="file" id="xlsUpload" accept=".xlsx,.xls,.csv" onchange="handleExcel(event)">
+        <div style="font-size:28px;margin-bottom:8px">📂</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Arrastrá o hacé clic para subir</div>
+        <div style="font-size:13px">Formatos: .xlsx, .xls, .csv</div>
+      </label>
+    </div>
+    <div class="card" id="pagosCard" style="display:none">
+      <div class="card-header"><span class="card-title">Detalle de pagos</span><span class="badge bg-badge-green" id="pagosFile"></span></div>
+      <div class="table-wrap"><table><thead id="pagosHead"></thead><tbody id="pagosBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- RECLAMOS -->
+  <div class="section" id="sec-reclamos">
+    <div class="sec-title">Reclamos Administrativos</div>
+    <div class="sec-sub">Registro y seguimiento de casos — guardado persistente en el navegador</div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Resueltos</div><div class="kpi-value c-green" id="rc-pct">—</div><div class="kpi-bar"><div class="kpi-fill bg-green" id="rc-bar" style="width:0"></div></div><div class="kpi-sub" id="rc-sub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Abiertos / en curso</div><div class="kpi-value c-amber" id="rc-open">—</div><div class="kpi-sub">requieren seguimiento</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total registrados</div><div class="kpi-value" id="rc-total">—</div><div class="kpi-sub">en el sistema</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Casos registrados</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="recSearch" placeholder="Buscar..." style="width:180px" oninput="renderReclamos()">
+          <select id="recFilter" onchange="renderReclamos()" style="width:140px">
+            <option value="all">Todos</option>
+            <option value="abierto">Abierto</option>
+            <option value="en_curso">En curso</option>
+            <option value="resuelto">Resuelto</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="openReclamoModal()">+ Nuevo reclamo</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Solicitante</th><th>Caso</th><th>Ingreso</th><th>Solución</th><th>Estado</th><th>Comentario</th><th></th></tr></thead>
+          <tbody id="reclamosBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL RECLAMO -->
+<div class="modal-overlay" id="reclamoModal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Nuevo reclamo</div>
+    <div class="form-row">
+      <div><label>Solicitante *</label><input type="text" id="f-sol" placeholder="Nombre completo"></div>
+      <div><label>Estado</label><select id="f-est"><option value="abierto">Abierto</option><option value="en_curso">En curso</option><option value="resuelto">Resuelto</option></select></div>
+    </div>
+    <div class="form-group"><label>Descripción del caso *</label><textarea id="f-caso" placeholder="Describí el reclamo..."></textarea></div>
+    <div class="form-row">
+      <div><label>Fecha de ingreso</label><input type="date" id="f-ing"></div>
+      <div><label>Fecha de solución</label><input type="date" id="f-sol2"></div>
+    </div>
+    <div class="form-group"><label>Comentario (opcional)</label><input type="text" id="f-com" placeholder="Notas adicionales"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveReclamo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIG -->
+<div class="modal-overlay" id="configModal" style="display:none" onclick="if(event.target===this)closeConfig()">
+  <div class="modal">
+    <div class="modal-title">⚙ Configuración de conexiones</div>
+    <div class="alert alert-warn" style="margin-bottom:16px">⚠ Las credenciales se almacenan en el navegador (localStorage). No compartir en equipos públicos.</div>
+
+    <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;padding-bottom:8px;border-bottom:0.5px solid var(--border);">
+      <span class="dot" id="dot-dol"></span>Dolibarr CRM
+    </div>
+    <div class="form-group">
+      <label>URL base</label>
+      <input type="text" id="cfg-dol-url" placeholder="http://fidinmo.com.ar/fidinmo/htdocs">
+      <div class="field-note">Sin barra al final</div>
+    </div>
+    <div class="form-group">
+      <label>API Key</label>
+      <input type="password" id="cfg-dol-key" placeholder="a6f2c89411a281d03fb5f105ec81707f">
+      <div class="field-note">Usuario → Generar API Key en Dolibarr</div>
+    </div>
+
+    <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 12px;padding-bottom:8px;border-bottom:0.5px solid var(--border);">
+      <span class="dot" id="dot-pecas"></span>PECAS (puente PHP en 72.60.245.72)
+    </div>
+    <div class="form-group">
+      <label>URL del script puente PECAS</label>
+      <input type="text" id="cfg-pecas-url" placeholder="http://pecas-prod.spazios.com.ar/spaziosv2/wsExcel">
+      <div class="field-note">http://72.60.245.72/api/pecas_bridge.php</div>
+    </div>
+    <div class="form-group">
+      <label>Token de autenticación</label>
+      <input type="password" id="cfg-pecas-token" placeholder="kdcleoekfldpekdkfjdkeorosksgkleytrgwf">
+      <div class="field-note">Token configurado en Tramites.aspx y Rescisiones.aspx</div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="testConnections()">🔌 Probar conexiones</button>
+      <button class="btn" onclick="closeConfig()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveConfig()">Guardar y reconectar</button>
+    </div>
+    <div id="testResult" style="margin-top:12px;font-size:12px;"></div>
+  </div>
+</div>
+
+<script>
+// ─── DEFAULTS ────────────────────────────────────────────────────────────────
+const DEFAULTS = {
+  dolUrl:     'http://fidinmo.com.ar/fidinmo/htdocs',
+  dolKey:     'a6f2c89411a281d03fb5f105ec81707f',
+  pecasUrl:   'http://72.60.245.72/api/pecas_bridge.php',
+  pecasToken: 'MT_STATS_2025',
+};
+const CFG_KEY = 'mt_stats_cfg_v2';
+const REC_KEY = 'mt_reclamos_v2';
+let cfg = {};
+
+function loadConfig() {
+  try { cfg = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(CFG_KEY) || '{}') }; }
+  catch(e) { cfg = { ...DEFAULTS }; }
+}
+function openConfig() {
+  loadConfig();
+  document.getElementById('cfg-dol-url').value    = cfg.dolUrl;
+  document.getElementById('cfg-dol-key').value    = cfg.dolKey;
+  document.getElementById('cfg-pecas-url').value  = cfg.pecasUrl  || 'http://72.60.245.72/api/pecas_bridge.php';
+  document.getElementById('cfg-pecas-token').value= cfg.pecasToken;
+  document.getElementById('testResult').innerHTML = '';
+  updateDots();
+  document.getElementById('configModal').style.display = 'flex';
+}
+function closeConfig() { document.getElementById('configModal').style.display = 'none'; }
+function saveConfig() {
+  cfg = {
+    dolUrl:     document.getElementById('cfg-dol-url').value.trim().replace(/\/+$/,''),
+    dolKey:     document.getElementById('cfg-dol-key').value.trim(),
+    pecasUrl:   document.getElementById('cfg-pecas-url').value.trim(),
+    pecasToken: document.getElementById('cfg-pecas-token').value.trim(),
+  };
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  closeConfig();
+  loadLegajo(); loadTramites(); loadRescisiones();
+}
+async function testConnections() {
+  const el = document.getElementById('testResult');
+  el.innerHTML = '<span class="spinner"></span> Probando...';
+  const results = [];
+  // Test Dolibarr
+  try {
+    const url = `${document.getElementById('cfg-dol-url').value.trim()}/api/index.php/thirdparties?limit=1&DOLAPIKEY=${document.getElementById('cfg-dol-key').value.trim()}`;
+    const r = await fetch(url, {signal: AbortSignal.timeout(8000)});
+    results.push(r.ok ? '✅ Dolibarr: conexión OK' : `⚠ Dolibarr: HTTP ${r.status}`);
+  } catch(e) { results.push('❌ Dolibarr: ' + e.message); }
+  // Test PECAS directo
+  try {
+    
+    const token = document.getElementById('cfg-pecas-token').value.trim();
+    const url   = document.getElementById('cfg-pecas-url').value.trim() + '?q=tramites';
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const j = await r.json();
+    results.push(j.ok ? '✅ PECAS Trámites: OK (' + j.count + ' registros)' : '⚠ PECAS: ' + j.error);
+  } catch(e) { results.push('❌ PECAS: ' + e.message); }
+  el.innerHTML = results.map(r => `<div style="padding:4px 0">${r}</div>`).join('');
+}
+function updateDots() {
+  ['dot-dol','dot-pecas'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.className = 'dot dot-amber';
+  });
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+const SECS = ['dashboard','legajo','tramites','rescisiones','pagos','reclamos'];
+function navigate(sec) {
+  SECS.forEach(s => {
+    document.getElementById('sec-'+s).classList.toggle('active', s===sec);
+    document.querySelector(`[data-sec="${s}"]`).classList.toggle('active', s===sec);
+  });
+}
+document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => navigate(n.dataset.sec)));
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+const COLS = ['clasificacion_trazabilidad','documentacion_complementaria','pagos_trazabilidad_financiera','reserva_boleto_fechasclave','identificacion_contrato'];
+function isOk(v) { return v===1||v==='1'||v===true||String(v||'').trim().toLowerCase()==='si'||String(v||'').trim().toLowerCase()==='sí'; }
+function chk(v) { return `<span class="chk ${isOk(v)?'chk-ok':'chk-no'}">${isOk(v)?'✓':'✗'}</span>`; }
+function pct(a,b) { return b>0 ? Math.round(a/b*100) : 0; }
+function fmt(d) { if(!d) return '—'; try { return new Date(d).toLocaleDateString('es-AR'); } catch(e){ return String(d).slice(0,10)||'—'; } }
+function stBadge(v) {
+  const m = {'Tarea Finalizada':'bg-badge-green','Tarea en Ejecucion':'bg-badge-amber','Tareas Pendientes':'bg-badge-amber','Mesa de Entrada':'bg-badge-blue','Tarea Abortada':'bg-badge-red'};
+  return `<span class="badge ${m[v]||'bg-badge-gray'}">${v||'—'}</span>`;
+}
+function setAlert(id, type, msg) { document.getElementById(id).innerHTML=`<div class="alert alert-${type}">${msg}</div>`; }
+function clrAlert(id) { document.getElementById(id).innerHTML=''; }
+
+// ─── DOLIBARR ────────────────────────────────────────────────────────────────
+let legajoData = [];
+
+async function loadLegajo() {
+  document.getElementById('legajoBody').innerHTML = '<tr class="empty-row"><td colspan="7"><span class="spinner"></span> Conectando a Dolibarr...</td></tr>';
+  clrAlert('legajoAlert');
+  try {
+    // Dolibarr REST: thirdparties con extrafields incluidos
+    const url = `${cfg.dolUrl}/api/index.php/thirdparties?limit=500&sortfield=t.nom&sortorder=ASC&DOLAPIKEY=${cfg.dolKey}`;
+    const res = await fetch(url, {signal: AbortSignal.timeout(15000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status} — verificá la URL y la API Key`);
+    const raw = await res.json();
+    if (!Array.isArray(raw)) throw new Error('Respuesta inesperada de Dolibarr');
+    legajoData = raw.map(s => ({
+      nom: s.name || s.nom || '—',
+      clasificacion_trazabilidad:    s.array_options?.options_clasificacion_trazabilidad    ?? 0,
+      documentacion_complementaria:  s.array_options?.options_documentacion_complementaria  ?? 0,
+      pagos_trazabilidad_financiera: s.array_options?.options_pagos_trazabilidad_financiera ?? 0,
+      reserva_boleto_fechasclave:    s.array_options?.options_reserva_boleto_fechasclave    ?? 0,
+      identificacion_contrato:       s.array_options?.options_identificacion_contrato       ?? 0,
+    }));
+    setAlert('legajoAlert','ok',`✅ ${legajoData.length} clientes cargados desde Dolibarr — ${new Date().toLocaleString('es-AR')}`);
+    document.getElementById('dot-dol') && (document.getElementById('dot-dol').className='dot dot-green');
+  } catch(err) {
+    setAlert('legajoAlert','warn',`⚠ No se pudo conectar a Dolibarr: <strong>${err.message}</strong>. Mostrando datos de ejemplo.`);
+    legajoData = sampleLegajo();
+  }
+  renderLegajo();
+  updateDashboard();
+}
+
+function sampleLegajo() {
+  return [
+    {nom:'García, Martín',  clasificacion_trazabilidad:1,documentacion_complementaria:1,pagos_trazabilidad_financiera:1,reserva_boleto_fechasclave:1,identificacion_contrato:1},
+    {nom:'López, Ana',       clasificacion_trazabilidad:1,documentacion_complementaria:0,pagos_trazabilidad_financiera:1,reserva_boleto_fechasclave:1,identificacion_contrato:1},
+    {nom:'Rodríguez, Carlos',clasificacion_trazabilidad:1,documentacion_complementaria:1,pagos_trazabilidad_financiera:0,reserva_boleto_fechasclave:0,identificacion_contrato:1},
+    {nom:'Fernández, Laura', clasificacion_trazabilidad:1,documentacion_complementaria:1,pagos_trazabilidad_financiera:1,reserva_boleto_fechasclave:1,identificacion_contrato:1},
+    {nom:'Martínez, Diego',  clasificacion_trazabilidad:0,documentacion_complementaria:1,pagos_trazabilidad_financiera:1,reserva_boleto_fechasclave:1,identificacion_contrato:0},
+    {nom:'González, Valeria',clasificacion_trazabilidad:1,documentacion_complementaria:1,pagos_trazabilidad_financiera:1,reserva_boleto_fechasclave:1,identificacion_contrato:1},
+    {nom:'Pérez, Roberto',   clasificacion_trazabilidad:1,documentacion_complementaria:0,pagos_trazabilidad_financiera:0,reserva_boleto_fechasclave:1,identificacion_contrato:1},
+    {nom:'Sánchez, Mónica',  clasificacion_trazabilidad:1,documentacion_complementaria:1,pagos_trazabilidad_financiera:1,reserva_boleto_fechasclave:0,identificacion_contrato:1},
+    {nom:'Díaz, Alejandro',  clasificacion_trazabilidad:1,documentacion_complementaria:1,pagos_trazabilidad_financiera:1,reserva_boleto_fechasclave:1,identificacion_contrato:1},
+    {nom:'Torres, Patricia', clasificacion_trazabilidad:0,documentacion_complementaria:0,pagos_trazabilidad_financiera:1,reserva_boleto_fechasclave:1,identificacion_contrato:1},
+  ];
+}
+
+function renderLegajo() {
+  const q = document.getElementById('legajoSearch').value.toLowerCase();
+  const f = document.getElementById('legajoFilter').value;
+  const filtered = legajoData.filter(r => {
+    const ok = COLS.every(c => isOk(r[c]));
+    if (f==='completo'&&!ok) return false;
+    if (f==='incompleto'&&ok) return false;
+    return !q || r.nom.toLowerCase().includes(q);
+  });
+  const completos = legajoData.filter(r => COLS.every(c => isOk(r[c]))).length;
+  const p = pct(completos, legajoData.length);
+  document.getElementById('l-pct').textContent  = p+'%';
+  document.getElementById('l-bar').style.width  = p+'%';
+  document.getElementById('l-total').textContent = legajoData.length;
+  document.getElementById('l-inc').textContent  = legajoData.length - completos;
+  document.getElementById('l-sub').textContent  = `${completos} de ${legajoData.length} completos`;
+  document.getElementById('legajoBody').innerHTML = filtered.length === 0
+    ? '<tr class="empty-row"><td colspan="7">Sin resultados para el filtro aplicado.</td></tr>'
+    : filtered.map(r => {
+        const ok = COLS.every(c => isOk(r[c]));
+        return `<tr><td><strong>${r.nom}</strong></td>${COLS.map(c=>`<td style="text-align:center">${chk(r[c])}</td>`).join('')}<td><span class="badge ${ok?'bg-badge-green':'bg-badge-red'}">${ok?'Completo':'Incompleto'}</span></td></tr>`;
+      }).join('');
+}
+
+// ─── PECAS FETCH ─────────────────────────────────────────────────────────────
+async function fetchPecas(q) {
+  const url = (cfg.pecasUrl || 'http://72.60.245.72/api/pecas_bridge.php');
+  const token = cfg.pecasToken || 'MT_STATS_2025';
+  const res = await fetch(url + '?q=' + q, {
+    headers: {'Authorization': 'Bearer ' + token},
+    signal: AbortSignal.timeout(30000),
+  });
+  const json = await res.json();
+  if (!res.ok || json.error) throw new Error(json.error || 'HTTP ' + res.status);
+  return json.data;
+}
+
+// ─── TRÁMITES ────────────────────────────────────────────────────────────────
+let tramitesData = [];
+async function loadTramites() {
+  document.getElementById('tramitesBody').innerHTML = '<tr class="empty-row"><td colspan="10"><span class="spinner"></span> Conectando a PECAS...</td></tr>';
+  clrAlert('tramitesAlert');
+  try {
+    tramitesData = await fetchPecas('tramites');
+    setAlert('tramitesAlert','ok',`✅ ${tramitesData.length} trámites cargados desde PECAS — ${new Date().toLocaleString('es-AR')}`);
+  } catch(err) {
+    setAlert('tramitesAlert','warn',`⚠ PECAS no disponible: <strong>${err.message}</strong>. Verificá que el script puente esté en el servidor y el token sea correcto. Mostrando datos de ejemplo.`);
+    tramitesData = sampleTramites();
+  }
+  renderTramites(); updateDashboard();
+}
+function sampleTramites() {
+  return [
+    {InstanciaProceso:1001,NombreTarea:'Alta referido',NombreReferido:'Suárez, Paula',Asesor:'Admin MT',NumReserva:'R-201',PagoReferido:'$50.000',Fecha:'2025-04-02',FInicioTarea:'2025-04-02',FFinalTarea:'2025-04-03',Estado:'Tarea Finalizada'},
+    {InstanciaProceso:1002,NombreTarea:'Validación',NombreReferido:'Vera, Tomás',Asesor:'Admin MT',NumReserva:'R-202',PagoReferido:'$45.000',Fecha:'2025-04-05',FInicioTarea:'2025-04-05',FFinalTarea:null,Estado:'Tareas Pendientes'},
+    {InstanciaProceso:1003,NombreTarea:'Alta referido',NombreReferido:'Molina, Rosa',Asesor:'Admin MT',NumReserva:'R-203',PagoReferido:'$60.000',Fecha:'2025-04-06',FInicioTarea:'2025-04-06',FFinalTarea:'2025-04-07',Estado:'Tarea Finalizada'},
+    {InstanciaProceso:1004,NombreTarea:'Control pago',NombreReferido:'Castro, Esteban',Asesor:'Admin MT',NumReserva:'R-204',PagoReferido:'$55.000',Fecha:'2025-04-08',FInicioTarea:'2025-04-08',FFinalTarea:null,Estado:'Tarea en Ejecucion'},
+    {InstanciaProceso:1005,NombreTarea:'Alta referido',NombreReferido:'Romero, Silvia',Asesor:'Admin MT',NumReserva:'R-205',PagoReferido:'$48.000',Fecha:'2025-04-09',FInicioTarea:'2025-04-09',FFinalTarea:'2025-04-09',Estado:'Tarea Abortada'},
+  ];
+}
+function renderTramites() {
+  const q = document.getElementById('tramSearch').value.toLowerCase();
+  const f = document.getElementById('tramFilter').value;
+  const data = tramitesData.filter(r => (f==='all'||r.Estado===f) && (!q||JSON.stringify(r).toLowerCase().includes(q)));
+  const fin   = tramitesData.filter(r=>r.Estado==='Tarea Finalizada').length;
+  const proc  = tramitesData.filter(r=>['Tareas Pendientes','Tarea en Ejecucion','Mesa de Entrada'].includes(r.Estado)).length;
+  const abort = tramitesData.filter(r=>r.Estado==='Tarea Abortada').length;
+  const p = pct(fin, tramitesData.length);
+  document.getElementById('t-pct').textContent  = p+'%';
+  document.getElementById('t-bar').style.width  = p+'%';
+  document.getElementById('t-total').textContent= tramitesData.length;
+  document.getElementById('t-proc').textContent = proc;
+  document.getElementById('t-abort').textContent= abort;
+  document.getElementById('t-sub').textContent  = `${fin} de ${tramitesData.length} finalizados`;
+  document.getElementById('tramitesBody').innerHTML = data.length===0
+    ? '<tr class="empty-row"><td colspan="10">Sin resultados.</td></tr>'
+    : data.map(r=>`<tr>
+        <td><code style="font-size:11px;color:var(--text-muted)">${r.InstanciaProceso||'—'}</code></td>
+        <td>${r.NombreTarea||'—'}</td>
+        <td>${r.NombreReferido||'—'}</td>
+        <td>${r.Asesor||'—'}</td>
+        <td>${r.NumReserva||'—'}</td>
+        <td>${r.PagoReferido||'—'}</td>
+        <td>${fmt(r.Fecha)}</td>
+        <td>${fmt(r.FInicioTarea)}</td>
+        <td>${fmt(r.FFinalTarea)}</td>
+        <td>${stBadge(r.Estado)}</td>
+      </tr>`).join('');
+}
+
+// ─── RESCISIONES ─────────────────────────────────────────────────────────────
+let rescisionesData = [];
+async function loadRescisiones() {
+  document.getElementById('rescisionesBody').innerHTML = '<tr class="empty-row"><td colspan="9"><span class="spinner"></span> Conectando a PECAS...</td></tr>';
+  clrAlert('rescisionesAlert');
+  try {
+    rescisionesData = await fetchPecas('rescisiones');
+    setAlert('rescisionesAlert','ok',`✅ ${rescisionesData.length} rescisiones cargadas desde PECAS — ${new Date().toLocaleString('es-AR')}`);
+  } catch(err) {
+    setAlert('rescisionesAlert','warn',`⚠ PECAS no disponible: <strong>${err.message}</strong>. Mostrando datos de ejemplo.`);
+    rescisionesData = sampleRescisiones();
+  }
+  renderRescisiones(); updateDashboard();
+}
+function sampleRescisiones() {
+  return [
+    {InstanciaProceso:2001,Cliente:'Vidal, Hugo',   Reserva:'R-101',motivo:'Cambio situación económica',Aprob_Ger_Ingreso:'Si',Aprob_CFO:'Si', FInicioTarea:'2025-03-10',FFinalTarea:'2025-03-25',Estado:'Tarea Finalizada'},
+    {InstanciaProceso:2002,Cliente:'Benítez, Clara', Reserva:'R-102',motivo:'Mudanza al exterior',       Aprob_Ger_Ingreso:'Si',Aprob_CFO:'Si', FInicioTarea:'2025-03-15',FFinalTarea:'2025-04-01',Estado:'Tarea Finalizada'},
+    {InstanciaProceso:2003,Cliente:'Herrera, Julio', Reserva:'R-103',motivo:'Dificultad de pago',        Aprob_Ger_Ingreso:'Si',Aprob_CFO:null, FInicioTarea:'2025-03-22',FFinalTarea:null,          Estado:'Tareas Pendientes'},
+    {InstanciaProceso:2004,Cliente:'Aguilar, Norma', Reserva:'R-104',motivo:'Voluntad propia',           Aprob_Ger_Ingreso:'Si',Aprob_CFO:'Si', FInicioTarea:'2025-04-01',FFinalTarea:'2025-04-12',Estado:'Tarea Finalizada'},
+    {InstanciaProceso:2005,Cliente:'Flores, Ricardo',Reserva:'R-105',motivo:'Cambio de plan',            Aprob_Ger_Ingreso:null,Aprob_CFO:null, FInicioTarea:'2025-04-05',FFinalTarea:null,          Estado:'Tarea en Ejecucion'},
+  ];
+}
+function renderRescisiones() {
+  const q = document.getElementById('rescSearch').value.toLowerCase();
+  const f = document.getElementById('rescFilter').value;
+  const data = rescisionesData.filter(r=>(f==='all'||r.Estado===f)&&(!q||(r.Cliente||'').toLowerCase().includes(q)));
+  const fin  = rescisionesData.filter(r=>r.Estado==='Tarea Finalizada').length;
+  const pend = rescisionesData.filter(r=>r.Estado!=='Tarea Finalizada').length;
+  const cfo  = rescisionesData.filter(r=>isOk(r.Aprob_CFO)).length;
+  const p = pct(fin, rescisionesData.length);
+  document.getElementById('r-pct').textContent  = p+'%';
+  document.getElementById('r-bar').style.width  = p+'%';
+  document.getElementById('r-total').textContent= rescisionesData.length;
+  document.getElementById('r-pend').textContent = pend;
+  document.getElementById('r-cfo').textContent  = cfo;
+  document.getElementById('r-sub').textContent  = `${fin} de ${rescisionesData.length} finalizadas`;
+  document.getElementById('rescisionesBody').innerHTML = data.length===0
+    ? '<tr class="empty-row"><td colspan="9">Sin resultados.</td></tr>'
+    : data.map(r=>`<tr>
+        <td><code style="font-size:11px;color:var(--text-muted)">${r.InstanciaProceso||'—'}</code></td>
+        <td><strong>${r.Cliente||'—'}</strong></td>
+        <td>${r.Reserva||'—'}</td>
+        <td style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.motivo||''}">${r.motivo||'—'}</td>
+        <td style="text-align:center">${chk(r.Aprob_Ger_Ingreso)}</td>
+        <td style="text-align:center">${chk(r.Aprob_CFO)}</td>
+        <td>${fmt(r.FInicioTarea)}</td>
+        <td>${fmt(r.FFinalTarea)}</td>
+        <td>${stBadge(r.Estado)}</td>
+      </tr>`).join('');
+}
+
+// ─── PAGOS EXCEL ─────────────────────────────────────────────────────────────
+function handleExcel(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb   = XLSX.read(ev.target.result, {type:'array'});
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws);
+      if (!rows.length) { alert('El archivo está vacío.'); return; }
+      const concKey = Object.keys(rows[0]).find(k => k.toLowerCase().replace(/[^a-z]/g,'').includes('concilia'));
+      if (!concKey) { alert('No encontré columna "conciliacion". Verificá el nombre exacto en el Excel.'); return; }
+      const total = rows.length;
+      const si    = rows.filter(r => ['si','sí'].includes(String(r[concKey]||'').trim().toLowerCase())).length;
+      const p     = pct(si, total);
+      const color = p>=85 ? 'var(--green)' : p>=60 ? 'var(--amber)' : 'var(--red)';
+      document.getElementById('p-pct').textContent   = p+'%';
+      document.getElementById('p-pct').style.color   = color;
+      document.getElementById('p-bar').style.width   = p+'%';
+      document.getElementById('p-bar').style.background = color;
+      document.getElementById('p-total').textContent = total;
+      document.getElementById('p-falta').textContent = total-si;
+      document.getElementById('p-sub').textContent   = `${si} de ${total} conciliados`;
+      document.getElementById('pagosFile').textContent = file.name;
+      document.getElementById('pagosCard').style.display = 'block';
+      const cols = Object.keys(rows[0]);
+      document.getElementById('pagosHead').innerHTML = '<tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+      document.getElementById('pagosBody').innerHTML = rows.slice(0,300).map(r => {
+        const conc = ['si','sí'].includes(String(r[concKey]||'').trim().toLowerCase());
+        return '<tr>'+cols.map(c => c===concKey
+          ? `<td><span class="badge ${conc?'bg-badge-green':'bg-badge-red'}">${r[c]||'—'}</span></td>`
+          : `<td>${r[c]??'—'}</td>`
+        ).join('')+'</tr>';
+      }).join('');
+      updateDashboard();
+    } catch(err) { alert('Error al leer el archivo: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ─── RECLAMOS ────────────────────────────────────────────────────────────────
+let reclamos = [], editId = null;
+function loadReclamos() {
+  try { reclamos = JSON.parse(localStorage.getItem(REC_KEY)||'[]'); } catch(e){ reclamos=[]; }
+  renderReclamos();
+}
+function saveReclamos() { localStorage.setItem(REC_KEY, JSON.stringify(reclamos)); }
+function openReclamoModal(id) {
+  editId = id||null;
+  document.getElementById('modalTitle').textContent = id ? 'Editar reclamo' : 'Nuevo reclamo';
+  const r = id ? reclamos.find(x=>x.id===id) : null;
+  document.getElementById('f-sol').value  = r?.solicitante||'';
+  document.getElementById('f-caso').value = r?.caso||'';
+  document.getElementById('f-ing').value  = r?.ingreso||new Date().toISOString().slice(0,10);
+  document.getElementById('f-sol2').value = r?.solucion||'';
+  document.getElementById('f-com').value  = r?.comentario||'';
+  document.getElementById('f-est').value  = r?.estado||'abierto';
+  document.getElementById('reclamoModal').style.display='flex';
+}
+function closeModal() { document.getElementById('reclamoModal').style.display='none'; }
+function saveReclamo() {
+  const sol=document.getElementById('f-sol').value.trim();
+  const cas=document.getElementById('f-caso').value.trim();
+  if (!sol||!cas) { alert('Completá el solicitante y la descripción del caso.'); return; }
+  const obj={id:editId||Date.now().toString(),solicitante:sol,caso:cas,ingreso:document.getElementById('f-ing').value,solucion:document.getElementById('f-sol2').value,comentario:document.getElementById('f-com').value,estado:document.getElementById('f-est').value,updatedAt:new Date().toISOString()};
+  if (editId) { const i=reclamos.findIndex(r=>r.id===editId); if(i>=0) reclamos[i]=obj; }
+  else reclamos.unshift(obj);
+  saveReclamos(); renderReclamos(); updateDashboard(); closeModal();
+}
+function deleteReclamo(id) {
+  if (!confirm('¿Eliminás este reclamo?')) return;
+  reclamos=reclamos.filter(r=>r.id!==id);
+  saveReclamos(); renderReclamos(); updateDashboard();
+}
+function renderReclamos() {
+  const q=document.getElementById('recSearch').value.toLowerCase();
+  const f=document.getElementById('recFilter').value;
+  const data=reclamos.filter(r=>(f==='all'||r.estado===f)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));
+  const total=reclamos.length, resueltos=reclamos.filter(r=>r.estado==='resuelto').length;
+  const p=pct(resueltos,total);
+  document.getElementById('rc-pct').textContent  = p+'%';
+  document.getElementById('rc-bar').style.width  = p+'%';
+  document.getElementById('rc-open').textContent = total-resueltos;
+  document.getElementById('rc-total').textContent= total;
+  document.getElementById('rc-sub').textContent  = `${resueltos} de ${total} resueltos`;
+  const sb={abierto:'bg-badge-red',en_curso:'bg-badge-amber',resuelto:'bg-badge-green'};
+  const sl={abierto:'Abierto',en_curso:'En curso',resuelto:'Resuelto'};
+  document.getElementById('reclamosBody').innerHTML = data.length===0
+    ? '<tr class="empty-row"><td colspan="8">No hay reclamos. Usá "+ Nuevo reclamo" para registrar el primero.</td></tr>'
+    : data.map((r,i)=>`<tr>
+        <td style="color:var(--text-hint);font-size:11px">#${String(i+1).padStart(3,'0')}</td>
+        <td><strong>${r.solicitante}</strong></td>
+        <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.caso}">${r.caso}</td>
+        <td>${r.ingreso||'—'}</td>
+        <td>${r.solucion||'—'}</td>
+        <td><span class="badge ${sb[r.estado]}">${sl[r.estado]}</span></td>
+        <td style="color:var(--text-muted);font-size:12px;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.comentario||'—'}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-sm" onclick="openReclamoModal('${r.id}')">Editar</button>
+          <button class="btn btn-sm" style="color:var(--red-text);margin-left:4px" onclick="deleteReclamo('${r.id}')">✕</button>
+        </td>
+      </tr>`).join('');
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+let radarChart=null, barChart=null;
+function updateDashboard() {
+  const ld = legajoData.length ? legajoData : sampleLegajo();
+  const td = tramitesData.length ? tramitesData : sampleTramites();
+  const rd = rescisionesData.length ? rescisionesData : sampleRescisiones();
+  const legajoPct = pct(ld.filter(r=>COLS.every(c=>isOk(r[c]))).length, ld.length);
+  const tramPct   = pct(td.filter(r=>r.Estado==='Tarea Finalizada').length, td.length);
+  const rescPct   = pct(rd.filter(r=>r.Estado==='Tarea Finalizada').length, rd.length);
+  const pagoEl    = document.getElementById('p-pct').textContent;
+  const pagoPct   = pagoEl==='—' ? null : parseInt(pagoEl);
+  const recTotal  = reclamos.length;
+  const recPct    = recTotal > 0 ? pct(reclamos.filter(r=>r.estado==='resuelto').length, recTotal) : null;
+
+  const kpis = [
+    {label:'Legajo completo',     pct:legajoPct, sec:'legajo'},
+    {label:'Trámites procesados', pct:tramPct,   sec:'tramites'},
+    {label:'Rescisiones INV',     pct:rescPct,   sec:'rescisiones'},
+    {label:'Pagos conciliados',   pct:pagoPct,   sec:'pagos'},
+    {label:'Reclamos resueltos',  pct:recPct,    sec:'reclamos'},
+  ];
+
+  document.getElementById('dashKpis').innerHTML = kpis.map(k => {
+    const v   = k.pct ?? '—';
+    const cls = k.pct===null ? '' : k.pct>=85 ? 'c-green' : k.pct>=60 ? 'c-amber' : 'c-red';
+    const bcl = k.pct===null ? '' : k.pct>=85 ? 'bg-green' : k.pct>=60 ? 'bg-amber' : 'bg-red';
+    return `<div class="kpi-card" onclick="navigate('${k.sec}')">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value ${cls}">${v}${k.pct!==null?'%':''}</div>
+      <div class="kpi-bar"><div class="kpi-fill ${bcl}" style="width:${k.pct??0}%"></div></div>
+      <div class="kpi-sub">${k.pct!==null?'Ver detalle →':'Datos pendientes'}</div>
+    </div>`;
+  }).join('');
+
+  const vals   = kpis.map(k=>k.pct??0);
+  const colors = vals.map(v=>v>=85?'#1D9E75':v>=60?'#EF9F27':'#E24B4A');
+
+  if (radarChart) { radarChart.data.datasets[0].data=vals; radarChart.update(); }
+  else radarChart = new Chart(document.getElementById('dashRadar'),{
+    type:'radar',
+    data:{labels:kpis.map(k=>k.label),datasets:[{label:'%',data:vals,backgroundColor:'rgba(29,158,117,.15)',borderColor:'#1D9E75',pointBackgroundColor:'#1D9E75',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:'rgba(136,135,128,.2)'},pointLabels:{font:{size:11}}}},plugins:{legend:{display:false}}}
+  });
+  if (barChart) { barChart.data.datasets[0].data=vals; barChart.data.datasets[0].backgroundColor=colors; barChart.update(); }
+  else barChart = new Chart(document.getElementById('dashBar'),{
+    type:'bar',
+    data:{labels:kpis.map(k=>k.label),datasets:[{label:'%',data:vals,backgroundColor:colors,borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%',color:'#888780'},grid:{color:'rgba(136,135,128,.15)'}},x:{ticks:{color:'#888780',maxRotation:20},grid:{display:false}}}}
+  });
+
+  document.getElementById('syncInfo').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-AR');
+  document.getElementById('dashDate').textContent  = new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+loadConfig();
+loadReclamos();
+updateDashboard();
+loadLegajo();
+loadTramites();
+loadRescisiones();
+</script>
+</body>
+</html>
