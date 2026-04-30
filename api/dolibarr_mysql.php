@@ -32,7 +32,7 @@ try {
 
 if ($path === 'thirdparties') {
     $stmt = $pdo->prepare("
-        SELECT
+        SELECT DISTINCT
             s.nom,
             se.clasificacion_trazabilidad,
             se.documentacion_complementaria,
@@ -40,8 +40,8 @@ if ($path === 'thirdparties') {
             se.reserva_boleto_fechasclave,
             se.identificacion_contrato
         FROM llx_societe_extrafields AS se
-        LEFT JOIN llx_metro_reserva   AS mr ON mr.idcliente1 = se.fk_object
-        LEFT JOIN llx_societe         AS s  ON s.rowid = se.fk_object
+        LEFT JOIN llx_metro_reserva     AS mr ON mr.idcliente1 = se.fk_object
+        LEFT JOIN llx_societe           AS s  ON s.rowid = se.fk_object
         LEFT JOIN llx_categorie_societe AS cs ON cs.fk_soc = s.rowid
         LEFT JOIN llx_categorie         AS c  ON c.rowid = cs.fk_categorie
         WHERE c.rowid IN (22, 26)
