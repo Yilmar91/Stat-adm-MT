@@ -509,7 +509,7 @@ async function loadLegajo() {
   clrAlert('legajoAlert');
   try {
     // Dolibarr REST: thirdparties con extrafields incluidos
-    const url = dolApiUrl(cfg.dolUrl, cfg.dolKey, 'thirdparties', {limit:2000});
+    const url = dolApiUrl(cfg.dolUrl, cfg.dolKey, 'thirdparties', {});
     const res = await fetch(url, {signal: AbortSignal.timeout(15000)});
     if (!res.ok) throw new Error(`HTTP ${res.status} — verificá la URL y la API Key`);
     const raw = await res.json();

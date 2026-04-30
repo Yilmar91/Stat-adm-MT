@@ -7,7 +7,7 @@ header('Content-Type: application/json; charset=utf-8');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
 
 $path  = trim(isset($_GET['path']) ? $_GET['path'] : '', '/');
-$limit = min((int)(isset($_GET['limit']) ? $_GET['limit'] : 100), 2000);
+$limit = null;
 
 $host   = 'fidinmo.com.ar';
 $dbname = 'fidinmo_fidv11';
@@ -46,9 +46,7 @@ if ($path === 'thirdparties') {
         LEFT JOIN llx_categorie         AS c  ON c.rowid = cs.fk_categorie
         WHERE c.rowid IN (22, 26)
         ORDER BY s.nom
-        LIMIT :lim
     ");
-    $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
     $stmt->execute();
     $rows = $stmt->fetchAll();
 
