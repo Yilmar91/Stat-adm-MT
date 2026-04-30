@@ -16,5 +16,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd "/opt/STAT - ADM MT"
-            git pull origin master
+            git fetch origin master
+            git reset --hard origin/master
+            git clean -fd
             echo "Deploy completado: $(date)"
