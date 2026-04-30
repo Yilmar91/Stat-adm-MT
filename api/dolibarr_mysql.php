@@ -33,16 +33,18 @@ try {
 if ($path === 'thirdparties') {
     $stmt = $pdo->prepare("
         SELECT
-            s.rowid AS id,
-            s.nom   AS name,
-            e.clasificacion_trazabilidad,
-            e.documentacion_complementaria,
-            e.pagos_trazabilidad_financiera,
-            e.reserva_boleto_fechasclave,
-            e.identificacion_contrato
-        FROM llx_societe s
-        LEFT JOIN llx_societe_extrafields e ON e.fk_object = s.rowid
-        WHERE s.client = 1
+            s.nom,
+            se.clasificacion_trazabilidad,
+            se.documentacion_complementaria,
+            se.pagos_trazabilidad_financiera,
+            se.reserva_boleto_fechasclave,
+            se.identificacion_contrato
+        FROM llx_societe_extrafields AS se
+        LEFT JOIN llx_metro_reserva   AS mr ON mr.idcliente1 = se.fk_object
+        LEFT JOIN llx_societe         AS s  ON s.rowid = se.fk_object
+        LEFT JOIN llx_categorie_societe AS cs ON cs.fk_soc = s.rowid
+        LEFT JOIN llx_categorie         AS c  ON c.rowid = cs.fk_categorie
+        WHERE c.rowid IN (22, 26)
         ORDER BY s.nom
         LIMIT :lim
     ");
@@ -52,9 +54,9 @@ if ($path === 'thirdparties') {
 
     $result = array_map(function($r) {
         return [
-            'id'   => $r['id'],
-            'name' => $r['name'],
-            'nom'  => $r['name'],
+            'id'   => null,
+            'name' => $r['nom'],
+            'nom'  => $r['nom'],
             'array_options' => [
                 'options_clasificacion_trazabilidad'    => $r['clasificacion_trazabilidad']    ?? 0,
                 'options_documentacion_complementaria'  => $r['documentacion_complementaria']  ?? 0,
@@ -71,7 +73,14 @@ if ($path === 'thirdparties') {
 
 // Ruta de diagnóstico
 if ($path === 'status') {
-    $stmt = $pdo->query("SELECT COUNT(*) AS total FROM llx_societe WHERE client = 1");
+    $stmt = $pdo->query("
+        SELECT COUNT(DISTINCT s.rowid) AS total
+        FROM llx_societe_extrafields AS se
+        LEFT JOIN llx_societe           AS s  ON s.rowid = se.fk_object
+        LEFT JOIN llx_categorie_societe AS cs ON cs.fk_soc = s.rowid
+        LEFT JOIN llx_categorie         AS c  ON c.rowid = cs.fk_categorie
+        WHERE c.rowid IN (22, 26)
+    ");
     echo json_encode(['ok' => true, 'clientes' => $stmt->fetch()['total']]);
     exit();
 }
