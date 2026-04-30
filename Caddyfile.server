@@ -1,0 +1,210 @@
+n8n.asistente-ia.cloud {
+	reverse_proxy http://127.0.0.1:5678
+}
+http://gateway.terravinci.ai {
+	reverse_proxy 127.0.0.1:3000
+}
+publisher.asistente-ia.cloud {
+	request_body {
+		max_size 500mb
+	}
+	handle /api/* {
+		reverse_proxy localhost:8008
+	}
+	handle /auth/* {
+		reverse_proxy localhost:8008
+	}
+	handle /uploads/* {
+		reverse_proxy localhost:8008
+	}
+	handle /health {
+		reverse_proxy localhost:8008
+	}
+	handle {
+		reverse_proxy localhost:8009
+	}
+}
+
+transcriptor.asistente-ia.cloud {
+	reverse_proxy localhost:8024
+}
+precalificador.asistente-ia.cloud {
+	reverse_proxy localhost:8001
+}
+relevamiento-obra.asistente-ia.cloud {
+	reverse_proxy localhost:8004
+}
+evaluador-operadores.asistente-ia.cloud {
+	reverse_proxy localhost:8005
+}
+
+crm.asistente-ia.cloud {
+	reverse_proxy localhost:8007
+}
+
+plaud.asistente-ia.cloud {
+	reverse_proxy 127.0.0.1:8014
+}
+
+postventa.asistente-ia.cloud {
+	handle /api/* {
+		reverse_proxy localhost:8012
+	}
+	handle /auth/* {
+		reverse_proxy localhost:8012
+	}
+	handle /admin/* {
+		reverse_proxy localhost:8012
+	}
+	handle /health {
+		reverse_proxy localhost:8012
+	}
+	handle {
+		reverse_proxy localhost:8013
+	}
+}
+
+adminer.postventa.asistente-ia.cloud {
+	# Puerto actualizado a 8016
+	basicauth {
+		pv_app_user $2a$14$ZVyB1Fo9BbLzzygH59ohQOwsHqdkQChvJVTv2J9roZTTh4WDk2n0W
+	}
+	reverse_proxy localhost:8016
+}
+
+app.postventa.asistente-ia.cloud {
+	request_body {
+		max_size 20mb
+	}
+	handle /api/* {
+		reverse_proxy localhost:8015
+	}
+	handle /uploads/* {
+		reverse_proxy localhost:8015
+	}
+	handle {
+		reverse_proxy localhost:8016
+	}
+}
+
+portal.asistente-ia.cloud {
+	reverse_proxy localhost:8005
+}
+
+portal-comercial.spazios.com.ar {
+	reverse_proxy localhost:8018
+}
+
+ads-extractor-terravinci.duckdns.org {
+	reverse_proxy localhost:8006
+}
+
+conciliacion.asistente-ia.cloud {
+	reverse_proxy localhost:8002
+}
+
+conciliacion-ingreso.asistente-ia.cloud {
+	reverse_proxy localhost:8003
+}
+
+
+agents.asistente-ia.cloud {
+    header Access-Control-Allow-Origin *
+    header Access-Control-Allow-Headers x-api-key,x-admin-key,Content-Type
+    header Access-Control-Allow-Methods POST,GET,DELETE,OPTIONS
+    reverse_proxy localhost:3640
+}
+
+km.asistente-ia.cloud {
+	basicauth /* {
+		jaime $2a$14$CWu6CcfYGHiYw/TyOXgrj./WPyxm6HPfp/WeQd.OOMMXCjPoFFo1W
+	}
+	reverse_proxy 127.0.0.1:5050
+}
+
+bot-comercial-terravinci.duckdns.org {
+    reverse_proxy localhost:8019
+}
+
+pna.asistente-ia.cloud {
+    reverse_proxy localhost:8020
+}
+
+jarvis.asistente-ia.cloud {
+    reverse_proxy localhost:3650
+}
+
+pasaje.asistente-ia.cloud {
+    handle /api/* {
+        reverse_proxy localhost:3652
+    }
+    handle {
+        reverse_proxy localhost:3653
+    }
+}
+
+personalizacion.asistente-ia.cloud {
+	request_body {
+		max_size 20mb
+	}
+	handle /api/* {
+		reverse_proxy localhost:8021
+	}
+	handle /uploads/* {
+		reverse_proxy localhost:8021
+	}
+	handle /pdfs/* {
+		reverse_proxy localhost:8021
+	}
+	handle {
+		reverse_proxy localhost:8022
+	}
+}
+
+design.asistente-ia.cloud {
+    root * /opt/terravinci-design-system/public
+    file_server
+    header Access-Control-Allow-Origin *
+    header Cache-Control "public, max-age=3600"
+}
+
+webhook.asistente-ia.cloud {
+    reverse_proxy localhost:8023
+}
+
+simulador.asistente-ia.cloud {
+    reverse_proxy localhost:8024
+}
+
+ia.asistente-ia.cloud {
+    reverse_proxy localhost:3200
+}
+
+estadisticas.grupoterravinci.cloud {
+    root * "/opt/STAT - ADM MT"
+    php_fastcgi unix//run/php/php8.1-fpm.sock
+    @api path /api/*
+    header @api {
+        Access-Control-Allow-Origin  *
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization"
+    }
+    @options method OPTIONS
+    respond @options 204
+    file_server
+    try_files {path} /index.html
+}
+
+staff-terravinci.asistente-ia.cloud {
+    root * /opt/staff-terravinci-app/dist
+    file_server
+    try_files {path} /index.html
+}
+
+api.staff-terravinci.asistente-ia.cloud {
+    reverse_proxy localhost:8010
+}
+
+db.staff-terravinci.asistente-ia.cloud {
+    reverse_proxy localhost:8011
+}

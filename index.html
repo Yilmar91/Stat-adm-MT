@@ -410,14 +410,19 @@ textarea{resize:vertical;min-height:72px;}
 <script>
 // ─── DEFAULTS ────────────────────────────────────────────────────────────────
 const DEFAULTS = {
-  dolUrl:     'http://fidinmo.com.ar/fidinmo/htdocs',
+  dolUrl:     'https://www.fidinmo.com.ar/fidinmo/htdocs',
   dolKey:     'a6f2c89411a281d03fb5f105ec81707f',
-  pecasUrl:   'http://72.60.245.72/api/pecas_bridge.php',
+  pecasUrl:   'https://estadisticas.grupoterravinci.cloud/api/pecas_bridge.php',
   pecasToken: 'MT_STATS_2025',
 };
 const CFG_KEY = 'mt_stats_cfg_v2';
 const REC_KEY = 'mt_reclamos_v2';
 let cfg = {};
+
+function dolApiUrl(base, key, path, params) {
+  const qs = new URLSearchParams(params).toString();
+  return `/api/dolibarr_mysql.php?path=${encodeURIComponent(path)}&${qs}`;
+}
 
 function loadConfig() {
   try { cfg = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(CFG_KEY) || '{}') }; }
@@ -449,18 +454,18 @@ async function testConnections() {
   const el = document.getElementById('testResult');
   el.innerHTML = '<span class="spinner"></span> Probando...';
   const results = [];
-  // Test Dolibarr
+  // Test Dolibarr (MySQL directo)
   try {
-    const url = `${document.getElementById('cfg-dol-url').value.trim()}/api/index.php/thirdparties?limit=1&DOLAPIKEY=${document.getElementById('cfg-dol-key').value.trim()}`;
-    const r = await fetch(url, {signal: AbortSignal.timeout(8000)});
-    results.push(r.ok ? '✅ Dolibarr: conexión OK' : `⚠ Dolibarr: HTTP ${r.status}`);
-  } catch(e) { results.push('❌ Dolibarr: ' + e.message); }
+    const r = await fetch('/api/dolibarr_mysql.php?path=status', {signal: AbortSignal.timeout(8000)});
+    const j = await r.json();
+    results.push(j.ok ? `✅ Dolibarr MySQL: OK (${j.clientes} clientes)` : `⚠ Dolibarr MySQL: ${j.error}`);
+  } catch(e) { results.push('❌ Dolibarr MySQL: ' + e.message); }
   // Test PECAS directo
   try {
     
     const token = document.getElementById('cfg-pecas-token').value.trim();
     const url   = document.getElementById('cfg-pecas-url').value.trim() + '?q=tramites';
-    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const r = await fetch(url, { headers: {'Authorization': 'Bearer ' + token}, signal: AbortSignal.timeout(10000) });
     const j = await r.json();
     results.push(j.ok ? '✅ PECAS Trámites: OK (' + j.count + ' registros)' : '⚠ PECAS: ' + j.error);
   } catch(e) { results.push('❌ PECAS: ' + e.message); }
@@ -504,7 +509,7 @@ async function loadLegajo() {
   clrAlert('legajoAlert');
   try {
     // Dolibarr REST: thirdparties con extrafields incluidos
-    const url = `${cfg.dolUrl}/api/index.php/thirdparties?limit=500&sortfield=t.nom&sortorder=ASC&DOLAPIKEY=${cfg.dolKey}`;
+    const url = dolApiUrl(cfg.dolUrl, cfg.dolKey, 'thirdparties', {limit:500});
     const res = await fetch(url, {signal: AbortSignal.timeout(15000)});
     if (!res.ok) throw new Error(`HTTP ${res.status} — verificá la URL y la API Key`);
     const raw = await res.json();
