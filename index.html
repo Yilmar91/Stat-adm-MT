@@ -153,7 +153,7 @@ textarea{resize:vertical;min-height:72px;}
   <div class="nav-item" data-sec="tramites">Trámites Administrativos</div>
   <div class="nav-item" data-sec="rescisiones">Rescisiones</div>
   <div class="nav-item" data-sec="pagos">Pagos Conciliados</div>
-  <!-- <div class="nav-item" data-sec="reclamos">Reclamos Administrativos</div> -->
+  <div class="nav-item" data-sec="reclamos" style="display:none">Reclamos Administrativos</div>
 </nav>
 
 <main class="content">
@@ -289,19 +289,25 @@ textarea{resize:vertical;min-height:72px;}
   <!-- PAGOS -->
   <div class="section" id="sec-pagos">
     <div class="sec-title">Pagos Cargados y Conciliados</div>
-    <div class="sec-sub">Subí el archivo "Archivo Conciliación MT" — columna <strong>conciliacion</strong> debe existir (valores: Sí / No)</div>
+    <div class="sec-sub">Fuente: SharePoint — Archivo Conciliación MT (columna <strong>Dolibar</strong>)</div>
     <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-label">Pagos conciliados</div><div class="kpi-value c-green" id="p-pct">—</div><div class="kpi-bar"><div class="kpi-fill" id="p-bar" style="width:0"></div></div><div class="kpi-sub" id="p-sub">Subí el archivo para calcular</div></div>
+      <div class="kpi-card"><div class="kpi-label">Pagos conciliados</div><div class="kpi-value c-green" id="p-pct">—</div><div class="kpi-bar"><div class="kpi-fill" id="p-bar" style="width:0"></div></div><div class="kpi-sub" id="p-sub">Cargá el archivo para calcular</div></div>
       <div class="kpi-card"><div class="kpi-label">Total registros</div><div class="kpi-value" id="p-total">—</div><div class="kpi-sub">en el archivo</div></div>
-      <div class="kpi-card"><div class="kpi-label">Sin conciliar</div><div class="kpi-value c-red" id="p-falta">—</div><div class="kpi-sub">pendientes de acción</div></div>
+      <div class="kpi-card"><div class="kpi-label">Sin conciliar</div><div class="kpi-value c-red" id="p-falta">—</div><div class="kpi-sub" id="p-sub2">pendientes de acción</div></div>
     </div>
     <div class="card">
-      <label class="upload-zone" for="xlsUpload">
-        <input type="file" id="xlsUpload" accept=".xlsx,.xls,.csv" onchange="handleExcel(event)">
-        <div style="font-size:28px;margin-bottom:8px">📂</div>
-        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Arrastrá o hacé clic para subir</div>
-        <div style="font-size:13px">Formatos: .xlsx, .xls, .csv</div>
-      </label>
+      <div style="text-align:center;padding:24px 16px">
+        <button class="btn btn-primary" onclick="loadFromSharePoint()">☁ Actualizar desde SharePoint</button>
+        <div id="pagosSpMsg" style="margin-top:14px;font-size:13px"></div>
+        <div id="pagosManualZone" style="display:none;margin-top:16px">
+          <label class="upload-zone" for="xlsUpload" style="max-width:440px;margin:0 auto;display:block;cursor:pointer">
+            <input type="file" id="xlsUpload" accept=".xlsx,.xls,.csv" onchange="handleExcel(event)">
+            <div style="font-size:28px;margin-bottom:8px">📂</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Arrastrá o hacé clic para subir</div>
+            <div style="font-size:13px">Formatos: .xlsx, .xls, .csv</div>
+          </label>
+        </div>
+      </div>
     </div>
     <div class="card" id="pagosCard" style="display:none">
       <div class="card-header"><span class="card-title">Detalle de pagos</span><span class="badge bg-badge-green" id="pagosFile"></span></div>
@@ -689,44 +695,77 @@ function renderRescisiones() {
       </tr>`).join('');
 }
 
-// ─── PAGOS EXCEL ─────────────────────────────────────────────────────────────
+// ─── PAGOS ───────────────────────────────────────────────────────────────────
+const SP_FILE_URL = 'https://tapiolax.sharepoint.com/:x:/r/sites/met-division3/_layouts/15/Doc.aspx?sourcedoc=%7B65F15C31-9E82-4C3C-8BED-1C954595817A%7D&file=Archivo%20conciliaci%25u00f3n%20MT_2024.xlsx&wdLOR=cB19E031D-2D2E-48B9-9639-4D2963BCE42C&fromShare=true&action=default&mobileredirect=true';
+
+async function loadFromSharePoint() {
+  const msg = document.getElementById('pagosSpMsg');
+  msg.innerHTML = '<span class="spinner"></span> Conectando a SharePoint...';
+  try {
+    const r = await fetch(SP_FILE_URL, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const buf = await r.arrayBuffer();
+    processExcelBuffer(buf, 'SharePoint');
+    msg.innerHTML = '';
+  } catch(e) {
+    msg.innerHTML = `<div class="alert alert-warn" style="text-align:left;margin-top:8px">
+      ⚠ <strong>SharePoint requiere autenticación</strong> — el archivo no es accesible directamente desde el navegador (CORS/auth bloqueado).<br><br>
+      Descargá el archivo desde SharePoint y subilo manualmente usando el botón de abajo.
+    </div>`;
+    document.getElementById('pagosManualZone').style.display = 'block';
+  }
+}
+
 function handleExcel(e) {
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    try {
-      const wb   = XLSX.read(ev.target.result, {type:'array'});
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws);
-      if (!rows.length) { alert('El archivo está vacío.'); return; }
-      const concKey = Object.keys(rows[0]).find(k => k.toLowerCase().replace(/[^a-z]/g,'').includes('concilia'));
-      if (!concKey) { alert('No encontré columna "conciliacion". Verificá el nombre exacto en el Excel.'); return; }
-      const total = rows.length;
-      const si    = rows.filter(r => ['si','sí'].includes(String(r[concKey]||'').trim().toLowerCase())).length;
-      const p     = pct(si, total);
-      const color = p>=85 ? 'var(--green)' : p>=60 ? 'var(--amber)' : 'var(--red)';
-      document.getElementById('p-pct').textContent   = p+'%';
-      document.getElementById('p-pct').style.color   = color;
-      document.getElementById('p-bar').style.width   = p+'%';
-      document.getElementById('p-bar').style.background = color;
-      document.getElementById('p-total').textContent = total;
-      document.getElementById('p-falta').textContent = total-si;
-      document.getElementById('p-sub').textContent   = `${si} de ${total} conciliados`;
-      document.getElementById('pagosFile').textContent = file.name;
-      document.getElementById('pagosCard').style.display = 'block';
-      const cols = Object.keys(rows[0]);
-      document.getElementById('pagosHead').innerHTML = '<tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
-      document.getElementById('pagosBody').innerHTML = rows.slice(0,300).map(r => {
-        const conc = ['si','sí'].includes(String(r[concKey]||'').trim().toLowerCase());
-        return '<tr>'+cols.map(c => c===concKey
-          ? `<td><span class="badge ${conc?'bg-badge-green':'bg-badge-red'}">${r[c]||'—'}</span></td>`
-          : `<td>${r[c]??'—'}</td>`
-        ).join('')+'</tr>';
-      }).join('');
-      updateDashboard();
-    } catch(err) { alert('Error al leer el archivo: ' + err.message); }
+    try { processExcelBuffer(ev.target.result, file.name); }
+    catch(err) { alert('Error al leer el archivo: ' + err.message); }
   };
   reader.readAsArrayBuffer(file);
+}
+
+function processExcelBuffer(buf, sourceName) {
+  const wb   = XLSX.read(buf, {type:'array'});
+  const ws   = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws);
+  if (!rows.length) { alert('El archivo está vacío.'); return; }
+  const dolKey = Object.keys(rows[0]).find(k => /dolibar/i.test(k));
+  if (!dolKey) { alert('No encontré columna "Dolibar" en el archivo. Verificá el nombre exacto.'); return; }
+
+  const total       = rows.length;
+  const conciliados = rows.filter(r => String(r[dolKey]||'').trim().toLowerCase() === 'conciliado').length;
+  const p     = pct(conciliados, total);
+  const color = p>=85 ? 'var(--green)' : p>=60 ? 'var(--amber)' : 'var(--red)';
+
+  document.getElementById('p-pct').textContent      = p+'%';
+  document.getElementById('p-pct').style.color      = color;
+  document.getElementById('p-bar').style.width      = p+'%';
+  document.getElementById('p-bar').style.background = color;
+  document.getElementById('p-total').textContent    = total;
+  document.getElementById('p-sub').textContent      = `${conciliados} de ${total} conciliados`;
+  document.getElementById('p-falta').textContent    = total - conciliados;
+
+  const estados = {};
+  rows.forEach(r => { const st = String(r[dolKey]||'—').trim(); estados[st] = (estados[st]||0)+1; });
+  const estadosTexto = Object.entries(estados).filter(([k])=>k.toLowerCase()!=='conciliado').map(([k,v])=>`${v} ${k}`).join(' · ');
+  document.getElementById('p-sub2').textContent = estadosTexto || 'todos conciliados';
+
+  document.getElementById('pagosFile').textContent       = sourceName;
+  document.getElementById('pagosCard').style.display     = 'block';
+
+  const cols = Object.keys(rows[0]);
+  document.getElementById('pagosHead').innerHTML = '<tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  document.getElementById('pagosBody').innerHTML = rows.slice(0,300).map(r => {
+    const st   = String(r[dolKey]||'').trim();
+    const conc = st.toLowerCase() === 'conciliado';
+    return '<tr>'+cols.map(c => c===dolKey
+      ? `<td><span class="badge ${conc?'bg-badge-green':'bg-badge-gray'}">${r[c]||'—'}</span></td>`
+      : `<td>${r[c]??'—'}</td>`
+    ).join('')+'</tr>';
+  }).join('');
+  updateDashboard();
 }
 
 // ─── RECLAMOS ────────────────────────────────────────────────────────────────
@@ -812,14 +851,14 @@ function updateDashboard() {
     {label:'Trámites procesados', pct:tramPct,   sec:'tramites'},
     {label:'Rescisiones INV',     pct:rescPct,   sec:'rescisiones'},
     {label:'Pagos conciliados',   pct:pagoPct,   sec:'pagos'},
-    // {label:'Reclamos resueltos',  pct:recPct,    sec:'reclamos'},
+    {label:'Reclamos resueltos',  pct:recPct,    sec:'reclamos', hidden:true},
   ];
 
   document.getElementById('dashKpis').innerHTML = kpis.map(k => {
     const v   = k.pct ?? '—';
     const cls = k.pct===null ? '' : k.pct>=85 ? 'c-green' : k.pct>=60 ? 'c-amber' : 'c-red';
     const bcl = k.pct===null ? '' : k.pct>=85 ? 'bg-green' : k.pct>=60 ? 'bg-amber' : 'bg-red';
-    return `<div class="kpi-card" onclick="navigate('${k.sec}')">
+    return `<div class="kpi-card" onclick="navigate('${k.sec}')" style="${k.hidden?'display:none':''}">`
       <div class="kpi-label">${k.label}</div>
       <div class="kpi-value ${cls}">${v}${k.pct!==null?'%':''}</div>
       <div class="kpi-bar"><div class="kpi-fill ${bcl}" style="width:${k.pct??0}%"></div></div>
