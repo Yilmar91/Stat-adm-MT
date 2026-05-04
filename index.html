@@ -153,7 +153,7 @@ textarea{resize:vertical;min-height:72px;}
   <div class="nav-item" data-sec="tramites">Trámites Administrativos</div>
   <div class="nav-item" data-sec="rescisiones">Rescisiones</div>
   <div class="nav-item" data-sec="pagos">Pagos Conciliados</div>
-  <div class="nav-item" data-sec="reclamos">Reclamos Administrativos</div>
+  <!-- <div class="nav-item" data-sec="reclamos">Reclamos Administrativos</div> -->
 </nav>
 
 <main class="content">
@@ -310,7 +310,7 @@ textarea{resize:vertical;min-height:72px;}
   </div>
 
   <!-- RECLAMOS -->
-  <div class="section" id="sec-reclamos">
+  <div class="section" id="sec-reclamos" style="display:none">
     <div class="sec-title">Reclamos Administrativos</div>
     <div class="sec-sub">Registro y seguimiento de casos — guardado persistente en el navegador</div>
     <div class="kpi-grid">
@@ -812,7 +812,7 @@ function updateDashboard() {
     {label:'Trámites procesados', pct:tramPct,   sec:'tramites'},
     {label:'Rescisiones INV',     pct:rescPct,   sec:'rescisiones'},
     {label:'Pagos conciliados',   pct:pagoPct,   sec:'pagos'},
-    {label:'Reclamos resueltos',  pct:recPct,    sec:'reclamos'},
+    // {label:'Reclamos resueltos',  pct:recPct,    sec:'reclamos'},
   ];
 
   document.getElementById('dashKpis').innerHTML = kpis.map(k => {
