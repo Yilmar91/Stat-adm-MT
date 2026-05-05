@@ -762,12 +762,27 @@ function handleExcel(e) {
 }
 
 function processExcelBuffer(buf, sourceName) {
-  const wb   = XLSX.read(buf, {type:'array'});
-  const ws   = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, {range: 1});
+  const wb = XLSX.read(buf, {type:'array'});
+
+  // Buscar la hoja "Conciliación" por nombre, fallback a la primera
+  const wsName = wb.SheetNames.find(n => /conciliaci/i.test(n)) || wb.SheetNames[0];
+  const ws = wb.Sheets[wsName];
+
+  // Auto-detectar la fila de encabezado escaneando hasta la fila 5
+  let rows = null, dolKey = null;
+  for (let r = 0; r <= 5; r++) {
+    const attempt = XLSX.utils.sheet_to_json(ws, {range: r});
+    if (attempt.length > 0) {
+      const k = Object.keys(attempt[0]).find(k => /dolibar/i.test(k));
+      if (k) { rows = attempt; dolKey = k; break; }
+    }
+  }
+  if (!rows) {
+    const allCols = XLSX.utils.sheet_to_json(ws, {range: 0});
+    alert('No encontré columna "Dolibar" en ninguna de las primeras 5 filas de la hoja "' + wsName + '".\n\nHojas disponibles: ' + wb.SheetNames.join(', ') + '\n\nColumnas fila 1: ' + (allCols.length ? Object.keys(allCols[0]).join(', ') : '(vacío)'));
+    return;
+  }
   if (!rows.length) { alert('El archivo está vacío.'); return; }
-  const dolKey = Object.keys(rows[0]).find(k => /dolibar/i.test(k));
-  if (!dolKey) { alert('No encontré columna "Dolibar".\n\nColumnas encontradas:\n' + Object.keys(rows[0]).join('\n')); return; }
 
   const total       = rows.length;
   const conciliados = rows.filter(r => String(r[dolKey]||'').trim().toLowerCase() === 'conciliado').length;
