@@ -764,7 +764,7 @@ function handleExcel(e) {
 function processExcelBuffer(buf, sourceName) {
   const wb   = XLSX.read(buf, {type:'array'});
   const ws   = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws);
+  const rows = XLSX.utils.sheet_to_json(ws, {range: 1});
   if (!rows.length) { alert('El archivo está vacío.'); return; }
   const dolKey = Object.keys(rows[0]).find(k => /dolibar/i.test(k));
   if (!dolKey) { alert('No encontré columna "Dolibar" en el archivo. Verificá el nombre exacto.'); return; }
