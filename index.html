@@ -162,6 +162,13 @@ textarea{resize:vertical;min-height:72px;}
   <div class="section active" id="sec-dashboard">
     <div class="sec-title">Dashboard general</div>
     <div class="sec-sub" id="dashDate"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+      <label style="font-size:12px;color:var(--text-muted)">Filtrar por inicio de tarea — Desde</label>
+      <input type="date" id="dashDesde" style="width:130px" onchange="updateDashboard()">
+      <label style="font-size:12px;color:var(--text-muted)">Hasta</label>
+      <input type="date" id="dashHasta" style="width:130px" onchange="updateDashboard()">
+      <button class="btn btn-sm" onclick="document.getElementById('dashDesde').value='';document.getElementById('dashHasta').value='';updateDashboard()">Limpiar</button>
+    </div>
     <div class="kpi-grid" id="dashKpis"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;">
       <div class="card">
@@ -229,7 +236,7 @@ textarea{resize:vertical;min-height:72px;}
     <div class="card">
       <div class="card-header">
         <span class="card-title">Detalle de trámites</span>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <input type="text" id="tramSearch" placeholder="Buscar..." style="width:180px" oninput="renderTramites()">
           <select id="tramFilter" onchange="renderTramites()" style="width:170px">
             <option value="all">Todos los estados</option>
@@ -239,6 +246,11 @@ textarea{resize:vertical;min-height:72px;}
             <option value="Mesa de Entrada">Mesa de entrada</option>
             <option value="Tarea Abortada">Abortado</option>
           </select>
+          <label style="font-size:12px;color:var(--text-muted)">Desde</label>
+          <input type="date" id="tramDesde" style="width:130px" onchange="renderTramites()">
+          <label style="font-size:12px;color:var(--text-muted)">Hasta</label>
+          <input type="date" id="tramHasta" style="width:130px" onchange="renderTramites()">
+          <button class="btn btn-sm" onclick="document.getElementById('tramDesde').value='';document.getElementById('tramHasta').value='';renderTramites()">Limpiar</button>
           <button class="btn btn-sm" onclick="loadTramites()">↻ Actualizar</button>
         </div>
       </div>
@@ -265,7 +277,7 @@ textarea{resize:vertical;min-height:72px;}
     <div class="card">
       <div class="card-header">
         <span class="card-title">Detalle de rescisiones</span>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <input type="text" id="rescSearch" placeholder="Buscar cliente..." style="width:200px" oninput="renderRescisiones()">
           <select id="rescFilter" onchange="renderRescisiones()" style="width:170px">
             <option value="all">Todos los estados</option>
@@ -274,13 +286,18 @@ textarea{resize:vertical;min-height:72px;}
             <option value="Tareas Pendientes">Pendiente</option>
             <option value="Tarea Abortada">Abortado</option>
           </select>
+          <label style="font-size:12px;color:var(--text-muted)">Desde</label>
+          <input type="date" id="rescDesde" style="width:130px" onchange="renderRescisiones()">
+          <label style="font-size:12px;color:var(--text-muted)">Hasta</label>
+          <input type="date" id="rescHasta" style="width:130px" onchange="renderRescisiones()">
+          <button class="btn btn-sm" onclick="document.getElementById('rescDesde').value='';document.getElementById('rescHasta').value='';renderRescisiones()">Limpiar</button>
           <button class="btn btn-sm" onclick="loadRescisiones()">↻ Actualizar</button>
         </div>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Instancia</th><th>Cliente</th><th>Reserva</th><th>Motivo</th><th>Aprob. Gerencia</th><th>Aprob. CFO</th><th>Inicio tarea</th><th>Fin tarea</th><th>Estado</th></tr></thead>
-          <tbody id="rescisionesBody"><tr class="empty-row"><td colspan="9"><span class="spinner"></span> Conectando a PECAS...</td></tr></tbody>
+          <thead><tr><th>Instancia</th><th>Cliente</th><th>Reserva</th><th>Motivo</th><th>Inicio tarea</th><th>Fin tarea</th><th>Estado</th></tr></thead>
+          <tbody id="rescisionesBody"><tr class="empty-row"><td colspan="7"><span class="spinner"></span> Conectando a PECAS...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -614,9 +631,17 @@ function sampleTramites() {
   ];
 }
 function renderTramites() {
-  const q = document.getElementById('tramSearch').value.toLowerCase();
-  const f = document.getElementById('tramFilter').value;
-  const data = tramitesData.filter(r => (f==='all'||r.Estado===f) && (!q||JSON.stringify(r).toLowerCase().includes(q)));
+  const q     = document.getElementById('tramSearch').value.toLowerCase();
+  const f     = document.getElementById('tramFilter').value;
+  const desde = document.getElementById('tramDesde').value;
+  const hasta = document.getElementById('tramHasta').value;
+  const data = tramitesData.filter(r => {
+    if (f!=='all' && r.Estado!==f) return false;
+    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+    if (desde && r.FInicioTarea && r.FInicioTarea.slice(0,10) < desde) return false;
+    if (hasta && r.FInicioTarea && r.FInicioTarea.slice(0,10) > hasta) return false;
+    return true;
+  });
   const fin   = tramitesData.filter(r=>r.Estado==='Tarea Finalizada').length;
   const proc  = tramitesData.filter(r=>['Tareas Pendientes','Tarea en Ejecucion','Mesa de Entrada'].includes(r.Estado)).length;
   const abort = tramitesData.filter(r=>r.Estado==='Tarea Abortada').length;
@@ -667,9 +692,17 @@ function sampleRescisiones() {
   ];
 }
 function renderRescisiones() {
-  const q = document.getElementById('rescSearch').value.toLowerCase();
-  const f = document.getElementById('rescFilter').value;
-  const data = rescisionesData.filter(r=>(f==='all'||r.Estado===f)&&(!q||(r.Cliente||'').toLowerCase().includes(q)));
+  const q     = document.getElementById('rescSearch').value.toLowerCase();
+  const f     = document.getElementById('rescFilter').value;
+  const desde = document.getElementById('rescDesde').value;
+  const hasta = document.getElementById('rescHasta').value;
+  const data = rescisionesData.filter(r => {
+    if (f!=='all' && r.Estado!==f) return false;
+    if (q && !(r.Cliente||'').toLowerCase().includes(q)) return false;
+    if (desde && r.FInicioTarea && r.FInicioTarea.slice(0,10) < desde) return false;
+    if (hasta && r.FInicioTarea && r.FInicioTarea.slice(0,10) > hasta) return false;
+    return true;
+  });
   const fin  = rescisionesData.filter(r=>r.Estado==='Tarea Finalizada').length;
   const pend = rescisionesData.filter(r=>r.Estado!=='Tarea Finalizada').length;
   const cfo  = rescisionesData.filter(r=>isOk(r.Aprob_CFO)).length;
@@ -681,14 +714,12 @@ function renderRescisiones() {
   document.getElementById('r-cfo').textContent  = cfo;
   document.getElementById('r-sub').textContent  = `${fin} de ${rescisionesData.length} finalizadas`;
   document.getElementById('rescisionesBody').innerHTML = data.length===0
-    ? '<tr class="empty-row"><td colspan="9">Sin resultados.</td></tr>'
+    ? '<tr class="empty-row"><td colspan="7">Sin resultados.</td></tr>'
     : data.map(r=>`<tr>
         <td><code style="font-size:11px;color:var(--text-muted)">${r.InstanciaProceso||'—'}</code></td>
         <td><strong>${r.Cliente||'—'}</strong></td>
         <td>${r.Reserva||'—'}</td>
         <td style="max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.motivo||''}">${r.motivo||'—'}</td>
-        <td style="text-align:center">${chk(r.Aprob_Ger_Ingreso)}</td>
-        <td style="text-align:center">${chk(r.Aprob_CFO)}</td>
         <td>${fmt(r.FInicioTarea)}</td>
         <td>${fmt(r.FFinalTarea)}</td>
         <td>${stBadge(r.Estado)}</td>
@@ -835,9 +866,18 @@ function renderReclamos() {
 // ─── DASHBOARD ───────────────────────────────────────────────────────────────
 let radarChart=null, barChart=null;
 function updateDashboard() {
+  const dashDesde = document.getElementById('dashDesde') ? document.getElementById('dashDesde').value : '';
+  const dashHasta = document.getElementById('dashHasta') ? document.getElementById('dashHasta').value : '';
+  const filterByDate = (arr, field) => arr.filter(r => {
+    if (dashDesde && r[field] && r[field].slice(0,10) < dashDesde) return false;
+    if (dashHasta && r[field] && r[field].slice(0,10) > dashHasta) return false;
+    return true;
+  });
   const ld = legajoData.length ? legajoData : sampleLegajo();
-  const td = tramitesData.length ? tramitesData : sampleTramites();
-  const rd = rescisionesData.length ? rescisionesData : sampleRescisiones();
+  const tdAll = tramitesData.length ? tramitesData : sampleTramites();
+  const rdAll = rescisionesData.length ? rescisionesData : sampleRescisiones();
+  const td = filterByDate(tdAll, 'FInicioTarea');
+  const rd = filterByDate(rdAll, 'FInicioTarea');
   const legajoPct = pct(ld.filter(r=>COLS.every(c=>isOk(r[c]))).length, ld.length);
   const tramPct   = pct(td.filter(r=>r.Estado==='Tarea Finalizada').length, td.length);
   const rescPct   = pct(rd.filter(r=>r.Estado==='Tarea Finalizada').length, rd.length);
@@ -851,7 +891,6 @@ function updateDashboard() {
     {label:'Trámites procesados', pct:tramPct,   sec:'tramites'},
     {label:'Rescisiones INV',     pct:rescPct,   sec:'rescisiones'},
     {label:'Pagos conciliados',   pct:pagoPct,   sec:'pagos'},
-    {label:'Reclamos resueltos',  pct:recPct,    sec:'reclamos', hidden:true},
   ];
 
   document.getElementById('dashKpis').innerHTML = kpis.map(k => {
