@@ -767,7 +767,7 @@ function processExcelBuffer(buf, sourceName) {
   const rows = XLSX.utils.sheet_to_json(ws, {range: 1});
   if (!rows.length) { alert('El archivo está vacío.'); return; }
   const dolKey = Object.keys(rows[0]).find(k => /dolibar/i.test(k));
-  if (!dolKey) { alert('No encontré columna "Dolibar" en el archivo. Verificá el nombre exacto.'); return; }
+  if (!dolKey) { alert('No encontré columna "Dolibar".\n\nColumnas encontradas:\n' + Object.keys(rows[0]).join('\n')); return; }
 
   const total       = rows.length;
   const conciliados = rows.filter(r => String(r[dolKey]||'').trim().toLowerCase() === 'conciliado').length;
