@@ -858,7 +858,7 @@ function updateDashboard() {
     const v   = k.pct ?? '—';
     const cls = k.pct===null ? '' : k.pct>=85 ? 'c-green' : k.pct>=60 ? 'c-amber' : 'c-red';
     const bcl = k.pct===null ? '' : k.pct>=85 ? 'bg-green' : k.pct>=60 ? 'bg-amber' : 'bg-red';
-    return `<div class="kpi-card" onclick="navigate('${k.sec}')" style="${k.hidden?'display:none':''}">`
+    return `<div class="kpi-card" onclick="navigate('${k.sec}')" style="${k.hidden?'display:none':''}">
       <div class="kpi-label">${k.label}</div>
       <div class="kpi-value ${cls}">${v}${k.pct!==null?'%':''}</div>
       <div class="kpi-bar"><div class="kpi-fill ${bcl}" style="width:${k.pct??0}%"></div></div>
