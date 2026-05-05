@@ -19,4 +19,5 @@ jobs:
             git fetch origin master
             git reset --hard origin/master
             git clean -fd
+            docker-compose up --build -d
             echo "Deploy completado: $(date)"
