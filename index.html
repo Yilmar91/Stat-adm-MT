@@ -704,7 +704,7 @@ function renderRescisiones() {
     return true;
   });
   const fin  = rescisionesData.filter(r=>r.Estado==='Tarea Finalizada').length;
-  const pend = rescisionesData.filter(r=>r.Estado!=='Tarea Finalizada').length;
+  const pend = rescisionesData.filter(r=>r.Estado==='Tareas Pendientes'||r.Estado==='Tarea en Ejecucion'||r.Estado==='Mesa de Entrada').length;
   const cfo  = rescisionesData.filter(r=>isOk(r.Aprob_CFO)).length;
   const p = pct(fin, rescisionesData.length);
   document.getElementById('r-pct').textContent  = p+'%';
