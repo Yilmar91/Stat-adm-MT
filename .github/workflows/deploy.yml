@@ -14,11 +14,13 @@ jobs:
           host: 72.60.245.72
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: SP_TENANT_ID,SP_CLIENT_ID,SP_CLIENT_SECRET
           script: |
             cd "/opt/STAT - ADM MT"
             git fetch origin master
             git reset --hard origin/master
             git clean -fd
+            printf "<?php\ndefine('SP_TENANT_ID',     '%s');\ndefine('SP_CLIENT_ID',     '%s');\ndefine('SP_CLIENT_SECRET', '%s');\n" "$SP_TENANT_ID" "$SP_CLIENT_ID" "$SP_CLIENT_SECRET" > api/config_private.php
             docker-compose build --no-cache
             docker-compose up -d
             echo "Deploy completado: $(date)"
