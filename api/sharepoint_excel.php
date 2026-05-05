@@ -103,7 +103,7 @@ try {
     curl_close($ch);
 
     if ($tok_cerr) json_error(502, "cURL error autenticando con Azure: $tok_cerr");
-    if ($tok_code !== 200) json_error(502, "Error OAuth2 (HTTP $tok_code): " . substr($tok_resp, 0, 300));
+    if ($tok_code !== 200) json_error(502, "Error OAuth2 (HTTP $tok_code) URL=$token_url CLIENT=" . SP_CLIENT_ID . " TENANT=" . SP_TENANT_ID . " RESP=" . substr($tok_resp, 0, 500));
 
     $tok_data = json_decode($tok_resp, true);
     if (empty($tok_data['access_token'])) json_error(502, "Token vacío en respuesta OAuth2: $tok_resp");
