@@ -1,3 +1,4 @@
 cache/
 *.log
 .env
+api/config_private.php

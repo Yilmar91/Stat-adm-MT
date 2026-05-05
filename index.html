@@ -731,16 +731,20 @@ const SP_FILE_URL = 'https://tapiolax.sharepoint.com/:x:/r/sites/met-division3/_
 
 async function loadFromSharePoint() {
   const msg = document.getElementById('pagosSpMsg');
-  msg.innerHTML = '<span class="spinner"></span> Conectando a SharePoint...';
+  msg.innerHTML = '<span class="spinner"></span> Conectando a SharePoint via servidor...';
   try {
-    const r = await fetch(SP_FILE_URL, { signal: AbortSignal.timeout(10000) });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const r = await fetch('/api/sharepoint_excel.php', { signal: AbortSignal.timeout(45000) });
+    if (!r.ok) {
+      let errMsg = 'HTTP ' + r.status;
+      try { const j = await r.json(); errMsg = j.error || errMsg; } catch(_) {}
+      throw new Error(errMsg);
+    }
     const buf = await r.arrayBuffer();
     processExcelBuffer(buf, 'SharePoint');
     msg.innerHTML = '';
   } catch(e) {
     msg.innerHTML = `<div class="alert alert-warn" style="text-align:left;margin-top:8px">
-      ⚠ <strong>SharePoint requiere autenticación</strong> — el archivo no es accesible directamente desde el navegador (CORS/auth bloqueado).<br><br>
+      ⚠ <strong>No se pudo descargar el archivo desde SharePoint</strong>: ${e.message}<br><br>
       Descargá el archivo desde SharePoint y subilo manualmente usando el botón de abajo.
     </div>`;
     document.getElementById('pagosManualZone').style.display = 'block';
