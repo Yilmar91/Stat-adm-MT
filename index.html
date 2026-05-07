@@ -852,20 +852,6 @@ function processExcelBuffer(buf, sourceName) {
     labels.forEach(l => { if(l.textContent==='Desde'||l.textContent==='Hasta') l.style.display=''; });
   }
 
-  // Generar chips de estado únicos
-  const estadosUnicos = {};
-  rows.forEach(r => {
-    const st = String(r[dolKey]||'—').trim();
-    estadosUnicos[st] = (estadosUnicos[st]||0) + 1;
-  });
-  const chipsEl = document.getElementById('pagosChips');
-  const allCount = rows.length;
-  chipsEl.innerHTML =
-    `<button class="btn btn-sm" style="font-weight:600;background:var(--green);color:#fff;border-color:var(--green)" id="chip-all" onclick="setPagoEstado('all')">Todos (${allCount})</button>` +
-    Object.entries(estadosUnicos).sort((a,b)=>b[1]-a[1]).map(([st, cnt]) =>
-      `<button class="btn btn-sm" id="chip-${CSS.escape(st)}" onclick="setPagoEstado('${st.replace(/'/g,"\\'")}')">${st} (${cnt})</button>`
-    ).join('');
-
   document.getElementById('pagosFilters').style.display = 'block';
   document.getElementById('pagosCard').style.display    = 'block';
 
@@ -897,10 +883,38 @@ function renderPagos() {
   const desde = document.getElementById('pago-fecha-desde').value;
   const hasta  = document.getElementById('pago-fecha-hasta').value;
 
-  const filtered = pagosData.filter(r => {
-    if (pagosEstadoActivo !== 'all' && String(r[pagosDoliKey]||'—').trim() !== pagosEstadoActivo) return false;
+  // Subconjunto filtrado solo por fecha (para calcular conteos de chips)
+  const dateFiltered = pagosData.filter(r => {
     if (pagosFechaKey && desde && r._fechaISO && r._fechaISO < desde) return false;
     if (pagosFechaKey && hasta && r._fechaISO && r._fechaISO > hasta) return false;
+    return true;
+  });
+
+  // Regenerar chips con conteos del subconjunto de fecha
+  const estadosUnicos = {};
+  dateFiltered.forEach(r => {
+    const st = String(r[pagosDoliKey]||'—').trim();
+    estadosUnicos[st] = (estadosUnicos[st]||0) + 1;
+  });
+  const chipsEl = document.getElementById('pagosChips');
+  chipsEl.innerHTML =
+    `<button class="btn btn-sm" id="chip-all" onclick="setPagoEstado('all')">Todos (${dateFiltered.length})</button>` +
+    Object.entries(estadosUnicos).sort((a,b)=>b[1]-a[1]).map(([st, cnt]) =>
+      `<button class="btn btn-sm" id="chip-${CSS.escape(st)}" onclick="setPagoEstado('${st.replace(/'/g,"\\'")}')">${st} (${cnt})</button>`
+    ).join('');
+  // Resaltar chip activo
+  const activeId = pagosEstadoActivo === 'all' ? 'chip-all' : 'chip-' + CSS.escape(pagosEstadoActivo);
+  const activeBtn = document.getElementById(activeId);
+  if (activeBtn) {
+    activeBtn.style.background  = 'var(--green)';
+    activeBtn.style.color       = '#fff';
+    activeBtn.style.borderColor = 'var(--green)';
+    activeBtn.style.fontWeight  = '600';
+  }
+
+  // Subconjunto final: fecha + estado
+  const filtered = dateFiltered.filter(r => {
+    if (pagosEstadoActivo !== 'all' && String(r[pagosDoliKey]||'—').trim() !== pagosEstadoActivo) return false;
     return true;
   });
 
