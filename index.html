@@ -929,7 +929,9 @@ function renderPagos() {
     const conc = st.toLowerCase() === 'conciliado';
     return '<tr>'+cols.map(c => c===pagosDoliKey
       ? `<td><span class="badge ${conc?'bg-badge-green':'bg-badge-gray'}">${r[c]||'—'}</span></td>`
-      : `<td>${r[c]??'—'}</td>`
+      : c===pagosFechaKey
+        ? `<td>${r._fechaISO ? fmt(r._fechaISO) : (r[c]??'—')}</td>`
+        : `<td>${r[c]??'—'}</td>`
     ).join('')+'</tr>';
   }).join('');
 
