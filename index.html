@@ -231,7 +231,6 @@ textarea{resize:vertical;min-height:72px;}
       <div class="kpi-card"><div class="kpi-label">Finalizados correctamente</div><div class="kpi-value c-green" id="t-pct">—</div><div class="kpi-bar"><div class="kpi-fill bg-green" id="t-bar" style="width:0"></div></div><div class="kpi-sub" id="t-sub">Cargando...</div></div>
       <div class="kpi-card"><div class="kpi-label">Total registrados</div><div class="kpi-value" id="t-total">—</div><div class="kpi-sub">en PECAS</div></div>
       <div class="kpi-card"><div class="kpi-label">En proceso</div><div class="kpi-value c-amber" id="t-proc">—</div><div class="kpi-sub">pendientes o en ejecución</div></div>
-      <div class="kpi-card"><div class="kpi-label">Abortados</div><div class="kpi-value c-red" id="t-abort">—</div><div class="kpi-sub">requieren revisión</div></div>
     </div>
     <div class="card">
       <div class="card-header">
@@ -272,7 +271,6 @@ textarea{resize:vertical;min-height:72px;}
       <div class="kpi-card"><div class="kpi-label">Finalizadas (INV)</div><div class="kpi-value c-green" id="r-pct">—</div><div class="kpi-bar"><div class="kpi-fill bg-green" id="r-bar" style="width:0"></div></div><div class="kpi-sub" id="r-sub">Cargando...</div></div>
       <div class="kpi-card"><div class="kpi-label">Total rescisiones</div><div class="kpi-value" id="r-total">—</div><div class="kpi-sub">registradas</div></div>
       <div class="kpi-card"><div class="kpi-label">Pendientes / en curso</div><div class="kpi-value c-amber" id="r-pend">—</div><div class="kpi-sub">sin cerrar</div></div>
-      <div class="kpi-card"><div class="kpi-label">Aprobadas por CFO</div><div class="kpi-value c-green" id="r-cfo">—</div><div class="kpi-sub">con aval CFO</div></div>
     </div>
     <div class="card">
       <div class="card-header">
@@ -324,6 +322,19 @@ textarea{resize:vertical;min-height:72px;}
             <div style="font-size:13px">Formatos: .xlsx, .xls, .csv</div>
           </label>
         </div>
+      </div>
+    </div>
+    <div id="pagosFilters" style="display:none;margin-bottom:4px;">
+      <div class="card" style="padding:12px 16px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--text-muted)">Desde</label>
+          <input type="date" id="pago-fecha-desde" style="width:130px" onchange="renderPagos()">
+          <label style="font-size:12px;color:var(--text-muted)">Hasta</label>
+          <input type="date" id="pago-fecha-hasta" style="width:130px" onchange="renderPagos()">
+          <button class="btn btn-sm" onclick="document.getElementById('pago-fecha-desde').value='';document.getElementById('pago-fecha-hasta').value='';renderPagos()">Limpiar</button>
+          <span id="pagoFechaMsg" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
+        <div id="pagosChips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
       </div>
     </div>
     <div class="card" id="pagosCard" style="display:none">
@@ -642,16 +653,19 @@ function renderTramites() {
     if (hasta && r.FInicioTarea && r.FInicioTarea.slice(0,10) > hasta) return false;
     return true;
   });
-  const fin   = tramitesData.filter(r=>r.Estado==='Tarea Finalizada').length;
-  const proc  = tramitesData.filter(r=>['Tareas Pendientes','Tarea en Ejecucion','Mesa de Entrada'].includes(r.Estado)).length;
-  const abort = tramitesData.filter(r=>r.Estado==='Tarea Abortada').length;
-  const p = pct(fin, tramitesData.length);
+  const kpiData = tramitesData.filter(r => {
+    if (desde && r.FInicioTarea && r.FInicioTarea.slice(0,10) < desde) return false;
+    if (hasta && r.FInicioTarea && r.FInicioTarea.slice(0,10) > hasta) return false;
+    return true;
+  });
+  const fin  = kpiData.filter(r=>r.Estado==='Tarea Finalizada').length;
+  const proc = kpiData.filter(r=>['Tareas Pendientes','Tarea en Ejecucion','Mesa de Entrada'].includes(r.Estado)).length;
+  const p = pct(fin, kpiData.length);
   document.getElementById('t-pct').textContent  = p+'%';
   document.getElementById('t-bar').style.width  = p+'%';
-  document.getElementById('t-total').textContent= tramitesData.length;
+  document.getElementById('t-total').textContent= kpiData.length;
   document.getElementById('t-proc').textContent = proc;
-  document.getElementById('t-abort').textContent= abort;
-  document.getElementById('t-sub').textContent  = `${fin} de ${tramitesData.length} finalizados`;
+  document.getElementById('t-sub').textContent  = `${fin} de ${kpiData.length} finalizados`;
   document.getElementById('tramitesBody').innerHTML = data.length===0
     ? '<tr class="empty-row"><td colspan="10">Sin resultados.</td></tr>'
     : data.map(r=>`<tr>
@@ -703,16 +717,19 @@ function renderRescisiones() {
     if (hasta && r.FInicioTarea && r.FInicioTarea.slice(0,10) > hasta) return false;
     return true;
   });
-  const pend = rescisionesData.filter(r=>r.Estado==='Tareas Pendientes'||r.Estado==='Tarea en Ejecucion'||r.Estado==='Mesa de Entrada').length;
-  const fin  = rescisionesData.length - pend;
-  const cfo  = rescisionesData.filter(r=>isOk(r.Aprob_CFO)).length;
-  const p = pct(fin, rescisionesData.length);
+  const kpiData = rescisionesData.filter(r => {
+    if (desde && r.FInicioTarea && r.FInicioTarea.slice(0,10) < desde) return false;
+    if (hasta && r.FInicioTarea && r.FInicioTarea.slice(0,10) > hasta) return false;
+    return true;
+  });
+  const pend = kpiData.filter(r=>r.Estado==='Tareas Pendientes'||r.Estado==='Tarea en Ejecucion'||r.Estado==='Mesa de Entrada').length;
+  const fin  = kpiData.length - pend;
+  const p = pct(fin, kpiData.length);
   document.getElementById('r-pct').textContent  = p+'%';
   document.getElementById('r-bar').style.width  = p+'%';
-  document.getElementById('r-total').textContent= rescisionesData.length;
+  document.getElementById('r-total').textContent= kpiData.length;
   document.getElementById('r-pend').textContent = pend;
-  document.getElementById('r-cfo').textContent  = cfo;
-  document.getElementById('r-sub').textContent  = `${fin} de ${rescisionesData.length} finalizadas`;
+  document.getElementById('r-sub').textContent  = `${fin} de ${kpiData.length} finalizadas`;
   document.getElementById('rescisionesBody').innerHTML = data.length===0
     ? '<tr class="empty-row"><td colspan="7">Sin resultados.</td></tr>'
     : data.map(r=>`<tr>
@@ -727,7 +744,8 @@ function renderRescisiones() {
 }
 
 // ─── PAGOS ───────────────────────────────────────────────────────────────────
-const SP_FILE_URL = 'https://tapiolax.sharepoint.com/:x:/r/sites/met-division3/_layouts/15/Doc.aspx?sourcedoc=%7B65F15C31-9E82-4C3C-8BED-1C954595817A%7D&file=Archivo%20conciliaci%25u00f3n%20MT_2024.xlsx&wdLOR=cB19E031D-2D2E-48B9-9639-4D2963BCE42C&fromShare=true&action=default&mobileredirect=true';
+let pagosData = [], pagosDoliKey = '', pagosFechaKey = '', pagosEstadoActivo = 'all';
+const SP_FILE_URL ='https://tapiolax.sharepoint.com/:x:/r/sites/met-division3/_layouts/15/Doc.aspx?sourcedoc=%7B65F15C31-9E82-4C3C-8BED-1C954595817A%7D&file=Archivo%20conciliaci%25u00f3n%20MT_2024.xlsx&wdLOR=cB19E031D-2D2E-48B9-9639-4D2963BCE42C&fromShare=true&action=default&mobileredirect=true';
 
 async function loadFromSharePoint() {
   const msg = document.getElementById('pagosSpMsg');
@@ -761,6 +779,22 @@ function handleExcel(e) {
   reader.readAsArrayBuffer(file);
 }
 
+function parseFechaISO(val) {
+  if (!val && val !== 0) return '';
+  if (typeof val === 'number') {
+    // Serial de fecha Excel
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return d.toISOString().slice(0, 10);
+  }
+  const s = String(val).trim();
+  // dd/mm/yyyy o dd-mm-yyyy
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  // yyyy-mm-dd
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return s;
+}
+
 function processExcelBuffer(buf, sourceName) {
   const wb = XLSX.read(buf, {type:'array'});
 
@@ -784,8 +818,94 @@ function processExcelBuffer(buf, sourceName) {
   }
   if (!rows.length) { alert('El archivo está vacío.'); return; }
 
-  const total       = rows.length;
-  const conciliados = rows.filter(r => String(r[dolKey]||'').trim().toLowerCase() === 'conciliado').length;
+  // Buscar columna de fecha (case-insensitive)
+  const fechaKey = Object.keys(rows[0]).find(k => /fecha/i.test(k)) || '';
+
+  // Normalizar fecha ISO en cada fila para facilitar filtrado
+  if (fechaKey) {
+    rows.forEach(r => { r._fechaISO = parseFechaISO(r[fechaKey]); });
+  }
+
+  // Guardar estado global para renderPagos
+  pagosData         = rows;
+  pagosDoliKey      = dolKey;
+  pagosFechaKey     = fechaKey;
+  pagosEstadoActivo = 'all';
+
+  document.getElementById('pagosFile').textContent = sourceName;
+
+  // Mostrar/ocultar mensaje de fecha
+  const fechaMsg = document.getElementById('pagoFechaMsg');
+  if (!fechaKey) {
+    fechaMsg.textContent = 'Columna de fecha no encontrada en el archivo';
+    document.getElementById('pago-fecha-desde').style.display = 'none';
+    document.getElementById('pago-fecha-hasta').style.display = 'none';
+    document.querySelector('label[for-pago-fecha]')
+    // ocultar los labels de fecha
+    const labels = document.querySelectorAll('#pagosFilters label');
+    labels.forEach(l => { if(l.textContent==='Desde'||l.textContent==='Hasta') l.style.display='none'; });
+  } else {
+    fechaMsg.textContent = '';
+    document.getElementById('pago-fecha-desde').style.display = '';
+    document.getElementById('pago-fecha-hasta').style.display = '';
+    const labels = document.querySelectorAll('#pagosFilters label');
+    labels.forEach(l => { if(l.textContent==='Desde'||l.textContent==='Hasta') l.style.display=''; });
+  }
+
+  // Generar chips de estado únicos
+  const estadosUnicos = {};
+  rows.forEach(r => {
+    const st = String(r[dolKey]||'—').trim();
+    estadosUnicos[st] = (estadosUnicos[st]||0) + 1;
+  });
+  const chipsEl = document.getElementById('pagosChips');
+  const allCount = rows.length;
+  chipsEl.innerHTML =
+    `<button class="btn btn-sm" style="font-weight:600;background:var(--green);color:#fff;border-color:var(--green)" id="chip-all" onclick="setPagoEstado('all')">Todos (${allCount})</button>` +
+    Object.entries(estadosUnicos).sort((a,b)=>b[1]-a[1]).map(([st, cnt]) =>
+      `<button class="btn btn-sm" id="chip-${CSS.escape(st)}" onclick="setPagoEstado('${st.replace(/'/g,"\\'")}')">${st} (${cnt})</button>`
+    ).join('');
+
+  document.getElementById('pagosFilters').style.display = 'block';
+  document.getElementById('pagosCard').style.display    = 'block';
+
+  renderPagos();
+}
+
+function setPagoEstado(estado) {
+  pagosEstadoActivo = estado;
+  // Actualizar estilos de chips
+  document.querySelectorAll('#pagosChips button').forEach(b => {
+    b.style.background   = '';
+    b.style.color        = '';
+    b.style.borderColor  = '';
+    b.style.fontWeight   = '';
+  });
+  const activeId = estado === 'all' ? 'chip-all' : 'chip-' + CSS.escape(estado);
+  const activeBtn = document.getElementById(activeId);
+  if (activeBtn) {
+    activeBtn.style.background  = 'var(--green)';
+    activeBtn.style.color       = '#fff';
+    activeBtn.style.borderColor = 'var(--green)';
+    activeBtn.style.fontWeight  = '600';
+  }
+  renderPagos();
+}
+
+function renderPagos() {
+  if (!pagosData.length) return;
+  const desde = document.getElementById('pago-fecha-desde').value;
+  const hasta  = document.getElementById('pago-fecha-hasta').value;
+
+  const filtered = pagosData.filter(r => {
+    if (pagosEstadoActivo !== 'all' && String(r[pagosDoliKey]||'—').trim() !== pagosEstadoActivo) return false;
+    if (pagosFechaKey && desde && r._fechaISO && r._fechaISO < desde) return false;
+    if (pagosFechaKey && hasta && r._fechaISO && r._fechaISO > hasta) return false;
+    return true;
+  });
+
+  const total       = filtered.length;
+  const conciliados = filtered.filter(r => String(r[pagosDoliKey]||'').trim().toLowerCase() === 'conciliado').length;
   const p     = pct(conciliados, total);
   const color = p>=85 ? 'var(--green)' : p>=60 ? 'var(--amber)' : 'var(--red)';
 
@@ -794,27 +914,25 @@ function processExcelBuffer(buf, sourceName) {
   document.getElementById('p-bar').style.width      = p+'%';
   document.getElementById('p-bar').style.background = color;
   document.getElementById('p-total').textContent    = total;
-  document.getElementById('p-sub').textContent      = `${conciliados} de ${total} conciliados`;
   document.getElementById('p-falta').textContent    = total - conciliados;
+  document.getElementById('p-sub').textContent      = `${conciliados} de ${total} conciliados`;
 
   const estados = {};
-  rows.forEach(r => { const st = String(r[dolKey]||'—').trim(); estados[st] = (estados[st]||0)+1; });
+  filtered.forEach(r => { const st = String(r[pagosDoliKey]||'—').trim(); estados[st] = (estados[st]||0)+1; });
   const estadosTexto = Object.entries(estados).filter(([k])=>k.toLowerCase()!=='conciliado').map(([k,v])=>`${v} ${k}`).join(' · ');
   document.getElementById('p-sub2').textContent = estadosTexto || 'todos conciliados';
 
-  document.getElementById('pagosFile').textContent       = sourceName;
-  document.getElementById('pagosCard').style.display     = 'block';
-
-  const cols = Object.keys(rows[0]);
+  const cols = Object.keys(pagosData[0]).filter(k => k !== '_fechaISO');
   document.getElementById('pagosHead').innerHTML = '<tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
-  document.getElementById('pagosBody').innerHTML = rows.slice(0,300).map(r => {
-    const st   = String(r[dolKey]||'').trim();
+  document.getElementById('pagosBody').innerHTML = filtered.slice(0,300).map(r => {
+    const st   = String(r[pagosDoliKey]||'').trim();
     const conc = st.toLowerCase() === 'conciliado';
-    return '<tr>'+cols.map(c => c===dolKey
+    return '<tr>'+cols.map(c => c===pagosDoliKey
       ? `<td><span class="badge ${conc?'bg-badge-green':'bg-badge-gray'}">${r[c]||'—'}</span></td>`
       : `<td>${r[c]??'—'}</td>`
     ).join('')+'</tr>';
   }).join('');
+
   updateDashboard();
 }
 
@@ -899,7 +1017,8 @@ function updateDashboard() {
   const rd = filterByDate(rdAll, 'FInicioTarea');
   const legajoPct = pct(ld.filter(r=>COLS.every(c=>isOk(r[c]))).length, ld.length);
   const tramPct   = pct(td.filter(r=>r.Estado==='Tarea Finalizada').length, td.length);
-  const rescPct   = pct(rd.filter(r=>r.Estado==='Tarea Finalizada').length, rd.length);
+  const rdPend    = rd.filter(r=>r.Estado==='Tareas Pendientes'||r.Estado==='Tarea en Ejecucion'||r.Estado==='Mesa de Entrada').length;
+  const rescPct   = pct(rd.length - rdPend, rd.length);
   const pagoEl    = document.getElementById('p-pct').textContent;
   const pagoPct   = pagoEl==='—' ? null : parseInt(pagoEl);
   const recTotal  = reclamos.length;
